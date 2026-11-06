@@ -9,7 +9,7 @@
 +      PYTHONPATH: /opt
 +      CPE_NVD_DIR: /data/cpe-nvd
 +    ports:
-+      - "127.0.0.1:5001:5000"
++      - "${CYBERCOVER_REPORTS_BIND:-127.0.0.1}:5001:5000"
 +    volumes:
 +      - "${CYBERCOVER_REPORTS_DIR:-./cybercover_reports}/cybercover_reports:/opt/cybercover_reports:ro"
 +      - "${DOCKER_COMPOSE_ADDITIONAL_SHARED_DIRECTORY:-./shared}:/shared/"

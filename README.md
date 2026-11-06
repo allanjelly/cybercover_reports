@@ -28,13 +28,20 @@ service manually under `services` without replacing existing local changes.
 
 The service uses the same `.env`, PostgreSQL, Redis and `API_TOKEN` as Artemis.
 In its container it listens on port 5000, separately from Artemis web. On the host
-it listens on `127.0.0.1:5001` and therefore cannot be reached directly by a
-remote portal. Configure an HTTPS reverse proxy on the same server to forward
-`/cybercover/findings` to `http://127.0.0.1:5001`, or use a secure private
-connection. Keep Artemis API access behind HTTPS too; do not send its token over
-public HTTP. The token grants access to all analyses; the portal must authorize
-each client against its own analysis IDs. No database or Redis credentials should
-be sent to clients.
+it defaults to `127.0.0.1:5001`, so a remote portal cannot reach it directly.
+`CYBERCOVER_REPORTS_BIND` in `.env` controls the host bind address. Set it to
+`0.0.0.0` only when explicitly exposing the service, and restrict access at the
+network firewall. When a VPN is available, set it to the server's VPN interface
+address. Recreate the service to apply changes to the host binding.
+
+The service itself uses HTTP, not HTTPS. Its token and response are unencrypted
+unless the connection uses a VPN or HTTPS reverse proxy. For internet access,
+prefer an HTTPS reverse proxy forwarding `/cybercover/findings` to
+`http://127.0.0.1:5001`. Keep Artemis API access protected in the same way.
+Docker-published ports can bypass host firewall rules such as ordinary UFW rules;
+verify effective restrictions from an external host. The token grants access to
+all analyses; the portal must authorize each client against its own analysis IDs.
+No database or Redis credentials should be sent to clients.
 
 Check the service after startup using the same mode as `scripts/start`:
 
