@@ -10,19 +10,38 @@ This version uses Artemis internals and has been developed against Artemis commi
 `0adbc0c`. Use a matching Artemis image and run the tests when upgrading it.
 The image must provide Artemis, FastAPI, PyYAML and its usual dependencies.
 
-Clone this repository as `cybercover_reports` beside the Artemis compose file,
-or set `CYBERCOVER_REPORTS_DIR` to the clone path. From the Artemis directory:
+Clone this repository as `cybercover_reports` beside Artemis's compose file, or
+set `CYBERCOVER_REPORTS_DIR` to the clone path. From the Artemis directory, check
+and apply the patch:
 
 ```sh
-docker compose -f docker-compose.yaml \
-  -f cybercover_reports/docker-compose.cybercover-reports.yml up -d cybercover-reports
+patch --dry-run -p0 < cybercover_reports/artemis-docker-compose.patch
+patch -p0 < cybercover_reports/artemis-docker-compose.patch
+./scripts/start --mode=development
 ```
 
+For production, use `./scripts/start --mode=production` instead. The startup
+script stops and restarts the Artemis stack; development mode also rebuilds the
+image and generates `docker-compose.dev.yaml` from the patched compose file.
+If the dry run fails, do not apply the patch blindly: add the `cybercover-reports`
+service manually under `services` without replacing existing local changes.
+
 The service uses the same `.env`, PostgreSQL, Redis and `API_TOKEN` as Artemis.
-It listens on `127.0.0.1:5001`; use a TLS-protected reverse proxy or private
-network for access from the portal. Do not expose it directly to the internet.
-The token grants access to all analyses; the portal must authorize each client
-against its own analysis IDs. No database or Redis credentials should be sent to clients.
+In its container it listens on port 5000, separately from Artemis web. On the host
+it listens on `127.0.0.1:5001` and therefore cannot be reached directly by a
+remote portal. Configure an HTTPS reverse proxy on the same server to forward
+`/cybercover/findings` to `http://127.0.0.1:5001`, or use a secure private
+connection. Keep Artemis API access behind HTTPS too; do not send its token over
+public HTTP. The token grants access to all analyses; the portal must authorize
+each client against its own analysis IDs. No database or Redis credentials should
+be sent to clients.
+
+Check the service after startup using the same mode as `scripts/start`:
+
+```sh
+docker compose -f docker-compose.dev.yaml logs --tail=50 cybercover-reports
+# Production: docker compose -f docker-compose.yaml logs --tail=50 cybercover-reports
+```
 
 ```sh
 curl -H "X-API-Token: $API_TOKEN" \
