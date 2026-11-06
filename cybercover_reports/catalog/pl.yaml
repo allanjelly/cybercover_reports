@@ -1,0 +1,225 @@
+report_types:
+  misconfigured_email:
+    area: email
+    title: Nieprawidłowa konfiguracja zabezpieczeń poczty
+    description: Wykryto problem z konfiguracją zabezpieczeń poczty elektronicznej dla domeny.
+    business_risk: Oszuści mogą łatwiej podszywać się pod firmę lub jej wiadomości mogą nie docierać do odbiorców.
+    recommendation: Poproś administratora poczty o sprawdzenie szczegółów i poprawienie konfiguracji.
+  open_port_remote_desktop:
+    area: network
+    title: Dostęp zdalny widoczny w internecie
+    description: Usługa zdalnego dostępu jest dostępna z internetu.
+    business_risk: Osoba nieuprawniona może próbować uzyskać dostęp do komputera lub sieci firmy.
+    recommendation: Poproś administratora o ograniczenie dostępu i włączenie dodatkowego uwierzytelniania.
+  open_port_database:
+    area: network
+    title: Baza danych dostępna z internetu
+    description: Wykryto publicznie dostępną usługę bazy danych.
+    business_risk: Nieuprawniona osoba może próbować uzyskać dostęp do danych firmy.
+    recommendation: Poproś administratora o ograniczenie dostępu do zaufanych systemów.
+  open_port_smb:
+    area: network
+    title: Usługa udostępniania plików dostępna z internetu
+    description: Usługa udostępniania zasobów sieciowych jest dostępna z internetu.
+    business_risk: Osoba nieuprawniona może próbować uzyskać dostęp do plików firmowych.
+    recommendation: Poproś administratora o ograniczenie dostępu do sieci firmowej.
+  open_port_telnet:
+    area: network
+    title: Niezabezpieczony dostęp zdalny
+    description: Wykryto usługę zdalnego dostępu, która może przesyłać dane bez szyfrowania.
+    business_risk: Hasła i dane mogą zostać przechwycone, a dostęp do systemu przejęty.
+    recommendation: Poproś administratora o wyłączenie Telnetu i używanie bezpieczniejszego dostępu.
+  directory_index:
+    area: website
+    title: Publiczna lista plików na stronie
+    description: Serwer może pokazywać odwiedzającym zawartość katalogu.
+    business_risk: Osoby postronne mogą znaleźć pliki, które nie powinny być publiczne.
+    recommendation: Poproś administratora o sprawdzenie plików i wyłączenie listowania katalogów.
+  zone_transfer_possible:
+    area: domain
+    title: Możliwe ujawnienie konfiguracji domeny
+    description: Serwer DNS może udostępniać listę informacji o domenie.
+    business_risk: Osoby postronne mogą poznać szczegóły infrastruktury firmy i wykorzystać je do przygotowania ataku.
+    recommendation: Poproś administratora domeny o ograniczenie transferu strefy DNS.
+  old_wordpress:
+    area: website
+    title: Nieaktualna wersja WordPressa
+    description: Wykryto wersję WordPressa wymagającą sprawdzenia aktualizacji.
+    business_risk: Brak aktualizacji może z czasem narazić stronę na znane problemy bezpieczeństwa.
+    recommendation: Poproś administratora o sprawdzenie aktualizacji i konfiguracji automatycznych aktualizacji.
+  wordpress_outdated_plugin_theme:
+    area: website
+    title: Nieaktualna wtyczka lub motyw WordPressa
+    description: Wykryto wtyczkę lub motyw, dla których może być dostępna aktualizacja.
+    business_risk: Znane błędy mogą umożliwić atak na stronę lub dostęp do jej danych.
+    recommendation: Poproś administratora o weryfikację i aktualizację wskazanego składnika.
+  expired_ssl_certificate:
+    area: website
+    title: Wygasły certyfikat
+    description: Certyfikat zabezpieczający połączenie wygasł.
+    business_risk: Klienci mogą widzieć ostrzeżenia i nie móc bezpiecznie korzystać z usługi.
+    recommendation: Poproś administratora o odnowienie i zainstalowanie certyfikatu.
+  almost_expired_ssl_certificate:
+    area: website
+    title: Certyfikat wkrótce wygaśnie
+    description: Certyfikat zabezpieczający połączenie zbliża się do końca ważności.
+    business_risk: Po wygaśnięciu klienci mogą mieć trudności z korzystaniem z usługi.
+    recommendation: Poproś administratora o odnowienie certyfikatu przed jego wygaśnięciem.
+  weak_admin_credentials:
+    area: website
+    title: Słabe dane logowania administratora
+    description: Wykryto możliwość zalogowania się do panelu przy użyciu słabych danych.
+    business_risk: Osoba nieuprawniona może przejąć kontrolę nad usługą lub uzyskać dostęp do danych.
+    recommendation: Niezwłocznie zmień dane logowania i ogranicz dostęp do panelu.
+  exposed_version_control_folder:
+    area: website
+    title: Publicznie dostępne pliki projektu
+    description: Wykryto dostępny z internetu katalog zarządzania kodem strony.
+    business_risk: Osoby postronne mogą poznać kod lub informacje ułatwiające atak.
+    recommendation: Poproś administratora o zablokowanie dostępu i sprawdzenie ujawnionych danych.
+  missing_security_headers:
+    area: website
+    title: Brak części zabezpieczeń przeglądarki
+    description: Strona nie przekazuje części zalecanych ustawień bezpieczeństwa.
+    business_risk: Niektóre rodzaje ataków na użytkowników strony mogą być łatwiejsze.
+    recommendation: Poproś administratora strony o sprawdzenie ustawień bezpieczeństwa serwera.
+  exposed_archive: &exposed_files
+    area: website
+    title: Potencjalnie wrażliwe pliki dostępne publicznie
+    description: Skan wykrył dostępny z internetu plik lub zasób, który może zawierać dane nieprzeznaczone do publikacji.
+    business_risk: Osoby postronne mogą poznać dane firmy lub informacje ułatwiające atak.
+    recommendation: Poproś administratora o sprawdzenie zawartości i ograniczenie dostępu.
+  exposed_bash_history: *exposed_files
+  exposed_configuration_file: *exposed_files
+  exposed_dead_letter: *exposed_files
+  exposed_file_with_listing: *exposed_files
+  exposed_http_server_info_status: *exposed_files
+  exposed_keys: *exposed_files
+  exposed_log_file: *exposed_files
+  exposed_password_file: *exposed_files
+  exposed_phpinfo: *exposed_files
+  exposed_php_source: *exposed_files
+  exposed_php_var_dump: *exposed_files
+  exposed_sql_dump: *exposed_files
+  exposed_version_control_folder_with_credentials: *exposed_files
+  leaked_sensitive_data: *exposed_files
+  command_injection: &code_execution
+    area: website
+    title: Możliwe wykonanie nieautoryzowanych poleceń
+    description: Wykryto podatność, która może pozwolić osobie postronnej na wykonanie poleceń w systemie.
+    business_risk: Atakujący może uzyskać dostęp do danych lub zakłócić działanie usługi.
+    recommendation: Pilnie przekaż wynik administratorowi, aby zweryfikował i usunął podatność.
+  rce_vulnerability: *code_execution
+  sql_injection:core: &injection
+    area: website
+    title: Niebezpieczna obsługa danych na stronie
+    description: Wykryto podatność w sposobie przetwarzania danych przez aplikację.
+    business_risk: Atakujący może uzyskać dostęp do informacji lub zmienić działanie usługi.
+    recommendation: Pilnie przekaż wynik administratorowi lub dostawcy aplikacji do naprawy.
+  orm_injection: *injection
+  sql_injection: *injection
+  xss_scanner: &xss
+    area: website
+    title: Podatność mogąca zagrozić użytkownikom strony
+    description: Strona może umożliwiać wprowadzenie niebezpiecznego kodu do przeglądarki użytkownika.
+    business_risk: Osoba atakująca może próbować podszyć się pod użytkownika lub wykraść jego dane.
+    recommendation: Poproś dostawcę strony o sprawdzenie i poprawienie obsługi wprowadzanych danych.
+  xss_vulnerability: *xss
+  lfi_vulnerability:
+    area: website
+    title: Możliwy dostęp do plików serwera
+    description: Wykryto podatność, która może pozwalać na odczyt plików przez aplikację.
+    business_risk: Osoba postronna może uzyskać dostęp do danych lub informacji o konfiguracji.
+    recommendation: Pilnie poproś dostawcę aplikacji o weryfikację i naprawę.
+  exposed_database_with_easy_password: &weak_login
+    area: network
+    title: Słabe zabezpieczenie dostępu do usługi
+    description: Usługa może być dostępna przy użyciu łatwych do odgadnięcia danych logowania.
+    business_risk: Osoba nieuprawniona może uzyskać dostęp do systemu lub danych firmy.
+    recommendation: Zmień dane logowania i poproś administratora o ograniczenie dostępu.
+  exposed_ssh_with_easy_password: *weak_login
+  exposed_wordpress_with_easy_password:
+    area: website
+    title: Słabe dane logowania do WordPressa
+    description: Wykryto możliwość zalogowania się do WordPressa przy użyciu łatwych do odgadnięcia danych.
+    business_risk: Osoba nieuprawniona może zmienić stronę lub uzyskać dostęp do jej danych.
+    recommendation: Zmień dane logowania i poproś administratora o zabezpieczenie konta.
+  ssh_known_bad_key:
+    area: network
+    title: Niebezpieczny klucz dostępu
+    description: Wykryto znany niebezpieczny klucz używany do zabezpieczenia usługi SSH.
+    business_risk: Bezpieczeństwo dostępu do systemu może być osłabione.
+    recommendation: Poproś administratora o wymianę wskazanego klucza i sprawdzenie konfiguracji.
+  writable_ftp:
+    area: network
+    title: Możliwy zapis plików na serwerze
+    description: Wykryto usługę FTP, która może pozwalać osobom postronnym na zapisywanie plików.
+    business_risk: Osoby nieuprawnione mogą umieścić niepożądane pliki lub zakłócić działanie usługi.
+    recommendation: Poproś administratora o ograniczenie dostępu i uprawnień do zapisu.
+  close_domain_expiration_date: &domain_expiry
+    area: domain
+    title: Zbliża się koniec ważności domeny
+    description: Termin ważności domeny może wkrótce upłynąć.
+    business_risk: Brak odnowienia może spowodować niedostępność strony lub poczty.
+    recommendation: Sprawdź termin u rejestratora i odnów domenę.
+  close_domain_expiry_date: *domain_expiry
+  closed_wordpress_plugin:
+    area: website
+    title: Wtyczka WordPressa może nie być wspierana
+    description: Wykryto wtyczkę, która została wycofana z katalogu WordPressa.
+    business_risk: Problemy bezpieczeństwa we wtyczce mogą nie otrzymywać poprawek.
+    recommendation: Poproś administratora o ocenę wtyczki i rozważenie jej usunięcia lub zastąpienia.
+  old_drupal: &old_cms
+    area: website
+    title: System strony wymaga sprawdzenia aktualizacji
+    description: Wykryto wersję systemu strony, która może być nieaktualna.
+    business_risk: Znane błędy mogą umożliwić atak na stronę lub jej dane.
+    recommendation: Poproś administratora o weryfikację wersji i dostępnych poprawek.
+  old_joomla: *old_cms
+  joomla_outdated_extension: *old_cms
+  insecure_wordpress: *old_cms
+  obsolete_moodle_version_found: *old_cms
+  technology_cve_found:
+    area: website
+    title: Możliwa podatność wykrytej technologii
+    description: Wersja wykrytej technologii może być powiązana ze znaną podatnością.
+    business_risk: Podatność może ułatwiać atak lub zakłócenie działania usługi.
+    recommendation: Poproś administratora o potwierdzenie wersji i zastosowanie dostępnych poprawek.
+  dangling_dns_record:
+    area: domain
+    title: Rekord domeny wymaga sprawdzenia
+    description: Wykryto rekord domeny wskazujący na zasób, który może nie być już prawidłowo kontrolowany.
+    business_risk: W niektórych przypadkach osoba postronna może przejąć wskazywany adres.
+    recommendation: Poproś administratora domeny o weryfikację i usunięcie nieużywanego rekordu.
+  removed_domain_existing_vhost:
+    area: domain
+    title: Nieaktualna konfiguracja domeny na serwerze
+    description: Serwer może nadal obsługiwać nazwę domeny, która nie jest już zarejestrowana.
+    business_risk: Osoba postronna może wykorzystać nieaktualną konfigurację.
+    recommendation: Poproś administratora o sprawdzenie i usunięcie niepotrzebnej konfiguracji.
+  script_unregistered_domain:
+    area: website
+    title: Strona korzysta z zasobu w niezarejestrowanej domenie
+    description: Wykryto odwołanie do skryptu w domenie, która może być dostępna do rejestracji.
+    business_risk: Przejęcie domeny może umożliwić dostarczenie niebezpiecznego kodu użytkownikom strony.
+    recommendation: Poproś administratora strony o usunięcie lub zastąpienie odwołania.
+  exposed_ntlm_endpoint:
+    area: network
+    title: Publicznie dostępna usługa uwierzytelniania
+    description: Wykryto dostępną z internetu usługę używającą mechanizmu uwierzytelniania NTLM.
+    business_risk: Informacje o infrastrukturze mogą ułatwić próby ataku na konta firmowe.
+    recommendation: Poproś administratora o sprawdzenie potrzeby publicznego dostępu i konfiguracji usługi.
+  certificate_authority_invalid: &certificate
+    area: website
+    title: Problem z certyfikatem usługi
+    description: Wykryto problem z certyfikatem zabezpieczającym połączenie.
+    business_risk: Użytkownicy mogą otrzymywać ostrzeżenia lub nie móc bezpiecznie korzystać z usługi.
+    recommendation: Poproś administratora o sprawdzenie i poprawienie certyfikatu.
+  bad_certificate_names: *certificate
+  no_https_redirect:
+    area: website
+    title: Strona nie zawsze wymusza bezpieczne połączenie
+    description: Połączenia przez HTTP mogą nie być przekierowywane na szyfrowane HTTPS.
+    business_risk: Dane przesyłane przez niezabezpieczone połączenie mogą być przechwycone.
+    recommendation: Poproś administratora o włączenie przekierowania na HTTPS.
+nuclei: {}
