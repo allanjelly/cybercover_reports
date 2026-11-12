@@ -187,3 +187,25 @@ def test_nuclei_reports_use_the_current_receiver_name(make_row, monkeypatch):
     monkeypatch.setattr(NucleiReporter, "create_reports", staticmethod(spy))
     result = process_results(nuclei_rows(make_row, nuclei_finding("x"), receiver="cybercover_nuclei"), [])
     assert result.reports and set(seen) == {"nuclei-module"}
+
+
+def test_archived_flag_ignores_superseded_incrementals(artemis_db, make_row, monkeypatch):  # noqa: F811
+    """Second review, test gap 5: an old incremental scan followed by a newer one does not flag the
+    posture as possibly archived; the latest incremental does."""
+    from artemis.config import Config
+    from cybercover_reports import api
+
+    now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+    # No full scan, so both incrementals are in the posture window.
+    _insert(artemis_db, make_row, [
+        ("inc-old", now - 11 * DAY, "192.0.2.1", INCREMENTAL),
+        ("inc-new", now - DAY, "192.0.2.1", INCREMENTAL),
+    ], [])
+    monkeypatch.setattr(api, "_pending_tasks", lambda: {})
+    monkeypatch.setattr(Config.Data.Autoarchiver, "AUTOARCHIVER_MIN_AGE_SECONDS_NOT_INTERESTING", 10 * 86400)
+    assert _posture({"target": "192.0.2.1"}).json()["partial_reasons"] == ["no_completed_full_scan"]
+    # The latest incremental older than the archiver age is flagged.
+    monkeypatch.setattr(Config.Data.Autoarchiver, "AUTOARCHIVER_MIN_AGE_SECONDS_NOT_INTERESTING", 12 * 3600)
+    assert _posture({"target": "192.0.2.1"}).json()["partial_reasons"] == [
+        "no_completed_full_scan", "results_possibly_archived"
+    ]

@@ -94,7 +94,9 @@ no tagging convention is needed: `full` when the stock `nuclei-module`, `port_sc
 `subdomain_enumeration` all ran (the request had targets only), `incremental` when `cybercover_nuclei`
 ran instead of `nuclei-module` (`enabled_modules` = `nuclei-router`, `cybercover_port_scanner`,
 `cybercover_nuclei`), otherwise `custom`. A narrower analysis, such as a Nuclei-only re-test started
-from the Artemis UI, is `custom` and never becomes the posture baseline.
+from the Artemis UI, is `custom` and never becomes the posture baseline. Do not put `port_scanner` or
+`subdomain_enumeration` into `MODULES_DISABLED_BY_DEFAULT`: no analysis would then count as a full scan,
+and every posture would report `no_completed_full_scan`.
 
 Targets are matched case-insensitively (Artemis stores them in lower case). `first_seen` is the first
 analysis in the current posture window (the baseline or later) that reported the finding: it restarts
