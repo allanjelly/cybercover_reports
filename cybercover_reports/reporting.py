@@ -58,7 +58,7 @@ def _nuclei_reports(data: dict[str, Any]) -> tuple[list[Report], list[Asset]]:
     # English avoids Artemis' exception for new templates missing a Polish translation.
     # Business descriptions come from our catalog, not this technical description.
     normalized = copy.deepcopy(data)
-    normalized["headers"]["receiver"] = "nuclei"
+    normalized["headers"]["receiver"] = "nuclei-module"  # the receiver name NucleiReporter accepts
     findings = normalized["result"]
     if not isinstance(findings, list):
         return [], []
@@ -146,7 +146,10 @@ def _process_row(row: dict[str, Any], reporters: list[Any], cached: list[dict[st
                 continue
             found_reports.extend(reporter.create_reports(data, Language.pl_PL))
             found_assets.extend(reporter.get_assets(data))
-    if found_reports and row["status"] != "INTERESTING":
+    # cybercover_nuclei saves ERROR together with the findings of the Nuclei runs that succeeded; they
+    # are real findings. The row is listed in module_errors, which marks the result as partial.
+    partial_nuclei = receiver == "cybercover_nuclei" and row["status"] == "ERROR"
+    if found_reports and row["status"] != "INTERESTING" and not partial_nuclei:
         raise RowError(f"reports produced for a result with status {row['status']}")
     return found_reports, found_assets
 
@@ -200,34 +203,36 @@ def process_results(rows: Iterable[dict[str, Any]], blocklist: list[Any]) -> Pro
                     asset.top_level_target = asset.name
                 if not asset.top_level_target:
                     raise RowError("asset without a top-level target")
-        except Exception as exc:  # noqa: BLE001 - isolate any reporter failure to its row
+
+            for report in found_reports:
+                report.tag = row.get("tag")
+                report.target_is_ip_address__as_property = report.target_is_ip_address()
+                persistent = task.get("payload_persistent", {})
+                if "original_ip" in persistent:
+                    report.target_ip = persistent["original_ip"]
+                    report.target_ip_checked = True
+                report.original_karton_name = receiver
+                report.original_task_result_id = row["id"]
+                report.original_task_result_root_uid = row["analysis_id"]
+                report.original_task_target_string = row["target_string"]
+                report.severity = get_severity(report)
+                report.last_domain = task["payload"].get("last_domain")
+            accepted = blocklist_reports(found_reports, blocklist)
+            for report in accepted:
+                template_id = report.additional_data.get("template_id")
+                if template_id and not report.additional_data["template_name"].startswith("group:"):
+                    report.additional_data["artemis_template_name"] = report.additional_data["template_name"]
+                    report.additional_data["template_name"] = f"custom:{template_id}"
+                report.normal_form = report.get_normal_form()
+        except Exception as exc:  # noqa: BLE001 - isolate any failure to its row
             log.exception("Unable to process task result %s", row.get("id"))
-            processing_errors.append(
-                {"task_result_id": row.get("id"), "module": receiver, "error": f"{type(exc).__name__}: {exc}"}
-            )
+            # Our own RowError messages are safe to return; other exception texts may contain data
+            # from the task result and stay in the service log.
+            error = f"RowError: {exc}" if isinstance(exc, RowError) else type(exc).__name__
+            processing_errors.append({"task_result_id": row.get("id"), "module": receiver, "error": error})
             continue
 
         cached_endpoints.extend(found_cached)
-        for report in found_reports:
-            report.tag = row.get("tag")
-            report.target_is_ip_address__as_property = report.target_is_ip_address()
-            persistent = task.get("payload_persistent", {})
-            if "original_ip" in persistent:
-                report.target_ip = persistent["original_ip"]
-                report.target_ip_checked = True
-            report.original_karton_name = receiver
-            report.original_task_result_id = row["id"]
-            report.original_task_result_root_uid = row["analysis_id"]
-            report.original_task_target_string = row["target_string"]
-            report.severity = get_severity(report)
-            report.last_domain = task["payload"].get("last_domain")
-        accepted = blocklist_reports(found_reports, blocklist)
-        for report in accepted:
-            template_id = report.additional_data.get("template_id")
-            if template_id and not report.additional_data["template_name"].startswith("group:"):
-                report.additional_data["artemis_template_name"] = report.additional_data["template_name"]
-                report.additional_data["template_name"] = f"custom:{template_id}"
-            report.normal_form = report.get_normal_form()
         reports.extend(accepted)
 
         for asset in found_assets:

@@ -34,6 +34,10 @@ Artemis-modules-extra must therefore be cloned in the Artemis directory; keep th
 mount list in `docker-compose.yml` in sync with its autoreporter volumes.
 
 The service uses the same `.env`, PostgreSQL, Redis and `API_TOKEN` as Artemis.
+Set Artemis' archiver age for non-interesting results above the full-scan interval, e.g. 40 days:
+`AUTOARCHIVER_MIN_AGE_SECONDS_NOT_INTERESTING=3456000`. With Artemis' default (15 days) the module
+errors of the baseline full scan are deleted while it is still the baseline, and every posture older
+than 15 days is marked `results_possibly_archived`.
 In its container it listens on port 5000, separately from Artemis web. On the host
 it defaults to `127.0.0.1:5001`, so a remote portal cannot reach it directly.
 `CYBERCOVER_REPORTS_BIND` in `.env` controls the host bind address. Set it to
@@ -86,9 +90,19 @@ Both endpoints require the `X-API-Token` header (Artemis' `API_TOKEN`).
   target are used and `partial_reasons` contains `no_completed_full_scan`. Unknown targets: 404.
 
 **Scan type** (`scan_type`) is derived from the modules Artemis stores as disabled for each analysis -
-no tagging convention is needed: `full` when the stock `nuclei-module` ran (the request had targets
-only), `incremental` when only `cybercover_nuclei` ran (`enabled_modules` = `nuclei-router`,
-`cybercover_port_scanner`, `cybercover_nuclei`), otherwise `custom`.
+no tagging convention is needed: `full` when the stock `nuclei-module`, `port_scanner` and
+`subdomain_enumeration` all ran (the request had targets only), `incremental` when `cybercover_nuclei`
+ran instead of `nuclei-module` (`enabled_modules` = `nuclei-router`, `cybercover_port_scanner`,
+`cybercover_nuclei`), otherwise `custom`. A narrower analysis, such as a Nuclei-only re-test started
+from the Artemis UI, is `custom` and never becomes the posture baseline.
+
+Targets are matched case-insensitively (Artemis stores them in lower case). `first_seen` is the first
+analysis in the current posture window (the baseline or later) that reported the finding: it restarts
+when a new full scan becomes the baseline.
+
+`/docs` and `/openapi.json` also require the `X-API-Token` header, e.g.
+`curl -H "X-API-Token: $API_TOKEN" http://127.0.0.1:5001/openapi.json`. In a browser they need an
+extension that adds the header.
 
 ## Response
 
@@ -133,9 +147,13 @@ findings or proof that a port is currently open.
 `pending_tasks`, `stopped`, `processing_errors` (a task result the service could not process - listed in
 `processing_errors`, the rest of the report is still produced), `essential_module_errors` (an ERROR of a
 module that produces most findings: `CYBERCOVER_REPORTS_ESSENTIAL_MODULES`, default
-`port_scanner,cybercover_port_scanner,nuclei-router,nuclei-module,cybercover_nuclei`) and, for the
-posture, `no_completed_full_scan`. Errors of other modules are listed in `module_errors` without making
-the report partial. In the posture, errors of an incremental scan followed by a later incremental scan are
+`port_scanner,cybercover_port_scanner,nuclei-router,nuclei-module,cybercover_nuclei`),
+`results_possibly_archived` (an analysis is older than Artemis' archiver age for non-interesting
+results, `AUTOARCHIVER_MIN_AGE_SECONDS_NOT_INTERESTING`, so its errors may already have been deleted)
+and, for the posture, `no_completed_full_scan`. Errors of other modules are listed in `module_errors` without making
+the report partial. Findings saved by `cybercover_nuclei` together with an ERROR status (some Nuclei
+runs failed, others succeeded) are reported; the error is listed in `module_errors`.
+`processing_errors[].error` gives only the error type; details are in the service log. In the posture, errors of an incremental scan followed by a later incremental scan are
 marked `superseded` and do not count: a failed incremental scan does not advance the scan state, so the
 next one covers the same templates. `task_status_counts` includes errors. This is a snapshot, not a transactional
 completion guarantee; zero pending tasks is not proof of a successful or complete scan.

@@ -139,7 +139,7 @@ def test_failing_reporter_is_isolated_to_its_row(make_row, monkeypatch):
     result = process_results(rows, [])
     assert [r.original_task_result_id for r in result.reports] == ["good"]
     assert result.processing_errors == [
-        {"task_result_id": "bad", "module": "mail_dns_scanner", "error": "KeyError: 'unexpected format'"}
+        {"task_result_id": "bad", "module": "mail_dns_scanner", "error": "KeyError"}
     ]
 
 
@@ -280,6 +280,8 @@ def artemis_db(monkeypatch):
     Base.metadata.drop_all(db._engine)
     Base.metadata.create_all(db._engine)
     monkeypatch.setattr(Config.Miscellaneous, "API_TOKEN", "test-token")
+    # The posture tests use fixed dates; keep them younger than the archiver age whatever today is.
+    monkeypatch.setattr(Config.Data.Autoarchiver, "AUTOARCHIVER_MIN_AGE_SECONDS_NOT_INTERESTING", 100 * 365 * 86400)
     from cybercover_reports import api
 
     monkeypatch.setattr(api, "get_db", lambda: db)

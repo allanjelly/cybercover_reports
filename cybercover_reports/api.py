@@ -7,6 +7,7 @@ from typing import Annotated, Any, Optional
 from uuid import UUID
 
 from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi.openapi.docs import get_swagger_ui_html
 from karton.core.backend import KartonBackend
 from karton.core.config import Config as KartonConfig
 
@@ -22,7 +23,8 @@ from .loader import load_analyses, load_results
 from .reporting import ProcessedResults, process_results
 from .summary import build_summary, sort_findings
 
-app = FastAPI(title="Cybercover fast reporter")
+# The API docs are served only with the token (below), not publicly.
+app = FastAPI(title="Cybercover fast reporter", docs_url=None, redoc_url=None, openapi_url=None)
 
 MAX_POSTURE_TARGETS = 50
 
@@ -39,6 +41,9 @@ ESSENTIAL_MODULES = frozenset(
 
 INCREMENTAL_MODULE = "cybercover_nuclei"
 FULL_SCAN_MODULE = "nuclei-module"
+# A full scan runs at least these modules. A narrower analysis (e.g. a quick Nuclei-only re-test
+# from the UI) is "custom" and never becomes the posture baseline.
+FULL_SCAN_CORE_MODULES = frozenset({"nuclei-module", "port_scanner", "subdomain_enumeration"})
 
 
 @lru_cache(maxsize=1)
@@ -47,18 +52,33 @@ def get_db() -> DB:
 
 
 def scan_type(analysis: dict[str, Any]) -> str:
-    """"full" (stock Nuclei enabled), "incremental" (only Cybercover's Nuclei enabled) or "custom".
+    """"full", "incremental" or "custom", derived from the modules Artemis stores as disabled for
+    the analysis.
 
-    Derived from the modules disabled for the analysis, which Artemis stores per analysis: a full
-    scan is requested with targets only (Cybercover modules are disabled by default), an incremental
-    one with enabled_modules = [nuclei-router, cybercover_port_scanner, cybercover_nuclei].
+    A full scan is requested with targets only (Cybercover modules are disabled by default), so the
+    stock Nuclei, port scanner and subdomain enumeration all run. An incremental scan is requested
+    with enabled_modules = [nuclei-router, cybercover_port_scanner, cybercover_nuclei]. Anything else
+    is custom.
     """
     disabled = {module.strip() for module in (analysis.get("disabled_modules") or "").split(",") if module.strip()}
-    if FULL_SCAN_MODULE not in disabled:
+    if not disabled & FULL_SCAN_CORE_MODULES:
         return "full"
-    if INCREMENTAL_MODULE not in disabled:
+    if INCREMENTAL_MODULE not in disabled and FULL_SCAN_MODULE in disabled:
         return "incremental"
     return "custom"
+
+
+def _possibly_archived(analysis: dict[str, Any]) -> bool:
+    """Whether Artemis' autoarchiver may already have removed non-INTERESTING task results (including
+    module errors) of the analysis, so its completeness can no longer be judged from the database."""
+    created_at = analysis.get("created_at")
+    if not isinstance(created_at, datetime.datetime):
+        return False
+    if created_at.tzinfo is not None:
+        created_at = created_at.astimezone(datetime.timezone.utc).replace(tzinfo=None)
+    age = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None) - created_at
+    limit = Config.Data.Autoarchiver.AUTOARCHIVER_MIN_AGE_SECONDS_NOT_INTERESTING
+    return age.total_seconds() > limit
 
 
 def _pending_tasks() -> dict[str, int]:
@@ -103,6 +123,16 @@ def _respond(response: dict[str, Any]) -> dict[str, Any]:
     return json.loads(json.dumps(response, cls=JSONEncoderAdditionalTypes))
 
 
+@app.get("/openapi.json", include_in_schema=False, dependencies=[Depends(verify_api_token)])
+def openapi_schema() -> dict:
+    return app.openapi()
+
+
+@app.get("/docs", include_in_schema=False, dependencies=[Depends(verify_api_token)])
+def api_docs() -> Any:
+    return get_swagger_ui_html(openapi_url="/openapi.json", title=f"{app.title} - docs")
+
+
 @app.get("/cybercover/findings", dependencies=[Depends(verify_api_token)])
 def findings(analysis_id: UUID) -> dict:
     analysis_id_str = str(analysis_id)
@@ -117,6 +147,8 @@ def findings(analysis_id: UUID) -> dict:
     catalog = load_catalog()
     entries = sort_findings([enrich(report, catalog) for report in processed.reports])
     reasons = _partial_reasons(processed, pending_before or pending_after, bool(analysis.get("stopped")))
+    if _possibly_archived(analysis):
+        reasons.append("results_possibly_archived")
     return _respond(
         {
             "analysis_id": analysis_id_str,
@@ -162,7 +194,8 @@ def _select_analyses(
 def posture(target: Annotated[list[str], Query()], tag: Optional[str] = None) -> dict:
     """Current findings of a customer's targets: the latest completed full scan of each target
     merged with all later (incremental or full) scans, deduplicated across scans."""
-    targets = sorted({item.strip() for item in target if item.strip()})
+    # Artemis stores targets in lower case.
+    targets = sorted({item.strip().lower() for item in target if item.strip()})
     if not targets or len(targets) > MAX_POSTURE_TARGETS:
         raise HTTPException(status_code=422, detail=f"Pass 1 to {MAX_POSTURE_TARGETS} target parameters")
     db = get_db()
@@ -210,6 +243,8 @@ def posture(target: Annotated[list[str], Query()], tag: Optional[str] = None) ->
             seen = _analysis_summary(analysis, pending_before)
             processed = process_results(load_results(db, analysis["id"]), blocklist)
             superseded = scan_type(analysis) == "incremental" and analysis["id"] != latest_incremental
+            if not superseded and _possibly_archived(analysis):
+                reasons.add("results_possibly_archived")
             reasons.update(
                 _partial_reasons(
                     processed,
