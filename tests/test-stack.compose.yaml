@@ -1,0 +1,52 @@
+# Isolated TEST stack for this repo only (Artemis image + throwaway Redis/PostgreSQL).
+# Not related to Artemis' docker-compose.yaml and never picked up by Artemis' scripts/start.
+# Run via tests/run_in_docker.sh.
+services:
+  test:
+    image: "${ARTEMIS_BUILD_IMAGE:-certpl/artemis:latest}"
+    entrypoint: ""
+    working_dir: /opt/cybercover_reports_repo
+    command: ["python3", "-m", "pytest", "-q", "-p", "no:cacheprovider", "tests"]
+    environment:
+      PYTHONPATH: /opt/cybercover_reports_repo:/opt
+      PYTHONDONTWRITEBYTECODE: "1"
+      POSTGRES_CONN_STR: postgresql+psycopg2://postgres:postgres@postgres/artemis
+      REDIS_CONN_STR: redis://redis:6379/1
+      DB_CONN_STR: mongodb://unused  # legacy setting Artemis still requires; not used
+      NUCLEI_TEMPLATE_GROUPS_FILE: /opt/artemis/modules/data/nuclei_template_groups.json
+    tmpfs:
+      - /data
+    volumes:
+      - ..:/opt/cybercover_reports_repo:ro
+      # Same reporters of Artemis-modules-extra as in ../docker-compose.yml (cloned next to this repo).
+      - ../../Artemis-modules-extra/extra_modules_config.py:/opt/extra_modules_config.py:ro
+      - ../../Artemis-modules-extra/autoreporter_addons/dns_reaper/:/opt/artemis/reporting/modules/dns_reaper/:ro
+      - ../../Artemis-modules-extra/autoreporter_addons/forti_vuln/:/opt/artemis/reporting/modules/forti_vuln/:ro
+      - ../../Artemis-modules-extra/autoreporter_addons/leak_scanner/:/opt/artemis/reporting/modules/leak_scanner/:ro
+      - ../../Artemis-modules-extra/autoreporter_addons/sqlmap/:/opt/artemis/reporting/modules/sqlmap/:ro
+      - ../../Artemis-modules-extra/autoreporter_addons/moodle_scanner/:/opt/artemis/reporting/modules/moodle_scanner/:ro
+      - ../../Artemis-modules-extra/autoreporter_addons/ssl_checks/:/opt/artemis/reporting/modules/ssl_checks/:ro
+      - ../../Artemis-modules-extra/autoreporter_addons/xss_scanner/:/opt/artemis/reporting/modules/xss_scanner/:ro
+      - ../../Artemis-modules-extra/autoreporter_addons/whatvpn/:/opt/artemis/reporting/modules/whatvpn/:ro
+    depends_on:
+      redis:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+
+  redis:
+    image: redis:7.0.5
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: artemis
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d artemis"]
+      interval: 2s
+      timeout: 2s
+      retries: 30

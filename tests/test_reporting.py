@@ -41,7 +41,8 @@ def test_standard_and_incremental_nuclei_are_deduplicated(make_row):
     assert report.additional_data["template_id"] == "CVE-2023-0001"
     assert report.severity.value == "high"
     entry = enrich(report, load_catalog())
-    assert entry["catalog"] == "fallback"
+    assert entry["catalog"] == "class"  # http/cves/... -> known vulnerability text
+    assert entry["catalog_class"] == "known_vulnerability"
     assert entry["catalog_key"] == "nuclei:CVE-2023-0001"
     assert entry["business_risk"]
     assert entry["id"] == enrich(report, load_catalog())["id"]
@@ -128,5 +129,7 @@ def test_mail_reporter_and_catalog(make_row):
 def test_noninteresting_result_cannot_create_report(make_row):
     row = nuclei_row(make_row, "nuclei", finding())
     row["status"] = "OK"
-    with pytest.raises(ValueError, match="non-interesting"):
-        process_results([row], [])
+    result = process_results([row], [])
+    assert result.reports == []
+    assert result.processing_errors[0]["task_result_id"] == "nuclei"
+    assert "status OK" in result.processing_errors[0]["error"]

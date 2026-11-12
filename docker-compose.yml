@@ -1,0 +1,54 @@
+# Cybercover fast reporter service.
+#
+# Artemis' scripts/start (via scripts/find_docker_compose_files) automatically includes every
+# */docker-compose.yml next to its own docker-compose.yaml, so cloning this repository as
+# Artemis/cybercover_reports is enough - Artemis' docker-compose.yaml is never modified.
+# In --mode=development, scripts/start generates docker-compose.dev.yml from this file.
+#
+# Paths are relative to the Artemis directory (the compose project directory).
+# YAML anchors cannot be shared across compose files, so the relevant parts of Artemis'
+# x-artemis-build-or-image / x-logging anchors are repeated here.
+
+x-cybercover-artemis-image:
+  &cybercover-artemis-image
+  image: "${ARTEMIS_BUILD_IMAGE:-certpl/artemis:latest}"
+  dns_opt:
+    - ndots:0
+  logging:
+    options:
+      max-size: "20m"
+      max-file: "1"
+
+services:
+  cybercover-reports:
+    <<: *cybercover-artemis-image
+    command: "uvicorn cybercover_reports.api:app --host 0.0.0.0 --port 5000"
+    env_file: .env
+    environment:
+      PYTHONPATH: /opt
+      CPE_NVD_DIR: /data/cpe-nvd
+    ports:
+      # Defaults to localhost only; see README before changing CYBERCOVER_REPORTS_BIND.
+      - "${CYBERCOVER_REPORTS_BIND:-127.0.0.1}:5001:5000"
+    restart: always
+    volumes:
+      - "${CYBERCOVER_REPORTS_DIR:-./cybercover_reports}/cybercover_reports:/opt/cybercover_reports:ro"
+      - "${DOCKER_COMPOSE_ADDITIONAL_SHARED_DIRECTORY:-./shared}:/shared/"
+      - cpe-nvd-data:/data/cpe-nvd:ro
+      # Reporters of Artemis-modules-extra. Artemis discovers reporters only under
+      # artemis/reporting/modules/, and Artemis-modules-extra mounts them into the autoreporter
+      # service only - without these mounts their findings (SSL, SQLi, XSS, ...) would be missing.
+      # Keep in sync with the autoreporter volumes in Artemis-modules-extra/docker-compose.yml.
+      - ./Artemis-modules-extra/extra_modules_config.py:/opt/extra_modules_config.py:ro
+      - ./Artemis-modules-extra/autoreporter_addons/dns_reaper/:/opt/artemis/reporting/modules/dns_reaper/:ro
+      - ./Artemis-modules-extra/autoreporter_addons/forti_vuln/:/opt/artemis/reporting/modules/forti_vuln/:ro
+      - ./Artemis-modules-extra/autoreporter_addons/leak_scanner/:/opt/artemis/reporting/modules/leak_scanner/:ro
+      - ./Artemis-modules-extra/autoreporter_addons/sqlmap/:/opt/artemis/reporting/modules/sqlmap/:ro
+      - ./Artemis-modules-extra/autoreporter_addons/moodle_scanner/:/opt/artemis/reporting/modules/moodle_scanner/:ro
+      - ./Artemis-modules-extra/autoreporter_addons/ssl_checks/:/opt/artemis/reporting/modules/ssl_checks/:ro
+      - ./Artemis-modules-extra/autoreporter_addons/xss_scanner/:/opt/artemis/reporting/modules/xss_scanner/:ro
+      - ./Artemis-modules-extra/autoreporter_addons/whatvpn/:/opt/artemis/reporting/modules/whatvpn/:ro
+
+# Declared by Artemis' docker-compose.yaml; repeated so this file also validates on its own.
+volumes:
+  cpe-nvd-data:
