@@ -3,6 +3,8 @@
 from collections import Counter
 from typing import Any
 
+from .catalog import AREAS
+
 SEVERITY_ORDER = {"high": 0, "medium": 1, "low": 2}
 MAX_TOP_ACTIONS = 3
 
@@ -17,6 +19,7 @@ def sort_findings(findings: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 def build_summary(findings: list[dict[str, Any]], catalog: dict[str, Any]) -> dict[str, Any]:
     by_severity = Counter(f.get("severity") or "unknown" for f in findings)
+    by_area = Counter(f["area"] for f in findings)
     risk_level = next((level for level in ("high", "medium", "low") if by_severity.get(level)), "none")
     if risk_level == "none" and findings:
         risk_level = "low"  # findings without a severity still deserve a look
@@ -37,7 +40,8 @@ def build_summary(findings: list[dict[str, Any]], catalog: dict[str, Any]) -> di
         "headline": catalog["summary"][risk_level].format(count=len(findings)),
         "total": len(findings),
         "by_severity": {level: by_severity.get(level, 0) for level in ("high", "medium", "low")},
-        "by_area": dict(sorted(Counter(f["area"] for f in findings).items())),
+        # Always every area of the shield, in display order, so the portal can show clean areas too.
+        "by_area": {area: by_area.get(area, 0) for area in AREAS},
         "top_actions": list(actions.values())[:MAX_TOP_ACTIONS],
         # Findings whose text is not reviewed for this exact problem; operators should check them.
         "needs_review": sum(1 for f in findings if f["catalog"] != "curated"),

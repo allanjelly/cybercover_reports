@@ -189,7 +189,7 @@ def test_marked_replay_is_cached_endpoint_with_its_source(make_row, source):
 # --- R4: summary ------------------------------------------------------------------------------------
 
 
-def _entry(severity, title, recommendation, area="website", catalog="class"):
+def _entry(severity, title, recommendation, area="applications", catalog="class"):
     return {"severity": severity, "title": title, "recommendation": recommendation, "area": area,
             "asset": "x", "catalog": catalog}
 
@@ -199,7 +199,7 @@ def test_summary_and_sorting():
     entries = [
         _entry("low", "Low", "Fix later"),
         _entry("high", "Default login", "Change password", catalog="curated"),
-        _entry("medium", "Medium", "Fix soon", area="email"),
+        _entry("medium", "Medium", "Fix soon", area="domain"),
         _entry("high", "Default login 2", "Change password"),
         _entry("high", "RCE", "Update now"),
     ]
@@ -207,7 +207,7 @@ def test_summary_and_sorting():
     assert summary["risk_level"] == "high"
     assert summary["headline"] == catalog["summary"]["high"].format(count=5)
     assert summary["by_severity"] == {"high": 3, "medium": 1, "low": 1}
-    assert summary["by_area"] == {"email": 1, "website": 4}
+    assert summary["by_area"] == {"domain": 1, "network": 0, "passwords": 0, "applications": 4, "files": 0}
     assert [a["recommendation"] for a in summary["top_actions"]] == ["Change password", "Update now", "Fix soon"]
     assert summary["top_actions"][0]["count"] == 2
     assert summary["needs_review"] == 4

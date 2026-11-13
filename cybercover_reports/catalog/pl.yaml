@@ -1,6 +1,6 @@
 report_types:
   misconfigured_email:
-    area: email
+    area: domain
     title: Nieprawidłowa konfiguracja zabezpieczeń poczty
     description: Wykryto problem z konfiguracją zabezpieczeń poczty elektronicznej dla domeny.
     business_risk: Oszuści mogą łatwiej podszywać się pod firmę lub jej wiadomości mogą nie docierać do odbiorców.
@@ -30,7 +30,7 @@ report_types:
     business_risk: Hasła i dane mogą zostać przechwycone, a dostęp do systemu przejęty.
     recommendation: Poproś administratora o wyłączenie Telnetu i używanie bezpieczniejszego dostępu.
   directory_index:
-    area: website
+    area: files
     title: Publiczna lista plików na stronie
     description: Serwer może pokazywać odwiedzającym zawartość katalogu.
     business_risk: Osoby postronne mogą znaleźć pliki, które nie powinny być publiczne.
@@ -42,70 +42,75 @@ report_types:
     business_risk: Osoby postronne mogą poznać szczegóły infrastruktury firmy i wykorzystać je do przygotowania ataku.
     recommendation: Poproś administratora domeny o ograniczenie transferu strefy DNS.
   old_wordpress:
-    area: website
+    area: applications
     title: Nieaktualna wersja WordPressa
     description: Wykryto wersję WordPressa wymagającą sprawdzenia aktualizacji.
     business_risk: Brak aktualizacji może z czasem narazić stronę na znane problemy bezpieczeństwa.
     recommendation: Poproś administratora o sprawdzenie aktualizacji i konfiguracji automatycznych aktualizacji.
   wordpress_outdated_plugin_theme:
-    area: website
+    area: applications
     title: Nieaktualna wtyczka lub motyw WordPressa
     description: Wykryto wtyczkę lub motyw, dla których może być dostępna aktualizacja.
     business_risk: Znane błędy mogą umożliwić atak na stronę lub dostęp do jej danych.
     recommendation: Poproś administratora o weryfikację i aktualizację wskazanego składnika.
   expired_ssl_certificate:
-    area: website
+    area: domain
     title: Wygasły certyfikat
     description: Certyfikat zabezpieczający połączenie wygasł.
     business_risk: Klienci mogą widzieć ostrzeżenia i nie móc bezpiecznie korzystać z usługi.
     recommendation: Poproś administratora o odnowienie i zainstalowanie certyfikatu.
   weak_admin_credentials:
-    area: website
+    area: passwords
     title: Słabe dane logowania administratora
     description: Wykryto możliwość zalogowania się do panelu przy użyciu słabych danych.
     business_risk: Osoba nieuprawniona może przejąć kontrolę nad usługą lub uzyskać dostęp do danych.
     recommendation: Niezwłocznie zmień dane logowania i ogranicz dostęp do panelu.
   exposed_version_control_folder:
-    area: website
+    area: files
     title: Publicznie dostępne pliki projektu
     description: Wykryto dostępny z internetu katalog zarządzania kodem strony.
     business_risk: Osoby postronne mogą poznać kod lub informacje ułatwiające atak.
     recommendation: Poproś administratora o zablokowanie dostępu i sprawdzenie ujawnionych danych.
   missing_security_headers:
-    area: website
+    area: applications
     title: Brak części zabezpieczeń przeglądarki
     description: Strona nie przekazuje części zalecanych ustawień bezpieczeństwa.
     business_risk: Niektóre rodzaje ataków na użytkowników strony mogą być łatwiejsze.
     recommendation: Poproś administratora strony o sprawdzenie ustawień bezpieczeństwa serwera.
+  exposed_password_file: &exposed_credentials
+    area: passwords
+    title: Hasła lub klucze dostępu dostępne publicznie
+    description: Skan wykrył dostępny z internetu plik lub zasób, który może zawierać hasła, klucze lub inne dane logowania.
+    business_risk: Osoba postronna może użyć tych danych, aby zalogować się do systemów firmy, poczty lub usług.
+    recommendation: Pilnie usuń lub zablokuj dostęp do pliku i zmień wszystkie hasła oraz klucze, które mogły się w nim znaleźć.
+  exposed_bash_history: *exposed_credentials
+  exposed_keys: *exposed_credentials
+  exposed_version_control_folder_with_credentials: *exposed_credentials
+  leaked_sensitive_data: *exposed_credentials
   exposed_archive: &exposed_files
-    area: website
+    area: files
     title: Potencjalnie wrażliwe pliki dostępne publicznie
     description: Skan wykrył dostępny z internetu plik lub zasób, który może zawierać dane nieprzeznaczone do publikacji.
     business_risk: Osoby postronne mogą poznać dane firmy lub informacje ułatwiające atak.
     recommendation: Poproś administratora o sprawdzenie zawartości i ograniczenie dostępu.
-  exposed_bash_history: *exposed_files
   exposed_configuration_file: *exposed_files
   exposed_dead_letter: *exposed_files
   exposed_file_with_listing: *exposed_files
   exposed_http_server_info_status: *exposed_files
-  exposed_keys: *exposed_files
   exposed_log_file: *exposed_files
-  exposed_password_file: *exposed_files
   exposed_phpinfo: *exposed_files
   exposed_php_source: *exposed_files
   exposed_php_var_dump: *exposed_files
   exposed_sql_dump: *exposed_files
-  exposed_version_control_folder_with_credentials: *exposed_files
-  leaked_sensitive_data: *exposed_files
   command_injection: &code_execution
-    area: website
+    area: applications
     title: Możliwe wykonanie nieautoryzowanych poleceń
     description: Wykryto podatność, która może pozwolić osobie postronnej na wykonanie poleceń w systemie.
     business_risk: Atakujący może uzyskać dostęp do danych lub zakłócić działanie usługi.
     recommendation: Pilnie przekaż wynik administratorowi, aby zweryfikował i usunął podatność.
   rce_vulnerability: *code_execution
   sql_injection:core: &injection
-    area: website
+    area: applications
     title: Niebezpieczna obsługa danych na stronie
     description: Wykryto podatność w sposobie przetwarzania danych przez aplikację.
     business_risk: Atakujący może uzyskać dostęp do informacji lub zmienić działanie usługi.
@@ -113,26 +118,26 @@ report_types:
   orm_injection: *injection
   sql_injection: *injection
   xss_vulnerability:
-    area: website
+    area: applications
     title: Podatność mogąca zagrozić użytkownikom strony
     description: Strona może umożliwiać wprowadzenie niebezpiecznego kodu do przeglądarki użytkownika.
     business_risk: Osoba atakująca może próbować podszyć się pod użytkownika lub wykraść jego dane.
     recommendation: Poproś dostawcę strony o sprawdzenie i poprawienie obsługi wprowadzanych danych.
   lfi_vulnerability:
-    area: website
+    area: applications
     title: Możliwy dostęp do plików serwera
     description: Wykryto podatność, która może pozwalać na odczyt plików przez aplikację.
     business_risk: Osoba postronna może uzyskać dostęp do danych lub informacji o konfiguracji.
     recommendation: Pilnie poproś dostawcę aplikacji o weryfikację i naprawę.
   exposed_database_with_easy_password: &weak_login
-    area: network
+    area: passwords
     title: Słabe zabezpieczenie dostępu do usługi
     description: Usługa może być dostępna przy użyciu łatwych do odgadnięcia danych logowania.
     business_risk: Osoba nieuprawniona może uzyskać dostęp do systemu lub danych firmy.
     recommendation: Zmień dane logowania i poproś administratora o ograniczenie dostępu.
   exposed_ssh_with_easy_password: *weak_login
   exposed_wordpress_with_easy_password:
-    area: website
+    area: passwords
     title: Słabe dane logowania do WordPressa
     description: Wykryto możliwość zalogowania się do WordPressa przy użyciu łatwych do odgadnięcia danych.
     business_risk: Osoba nieuprawniona może zmienić stronę lub uzyskać dostęp do jej danych.
@@ -156,13 +161,13 @@ report_types:
     business_risk: Brak odnowienia może spowodować niedostępność strony lub poczty.
     recommendation: Sprawdź termin u rejestratora i odnów domenę.
   closed_wordpress_plugin:
-    area: website
+    area: applications
     title: Wtyczka WordPressa może nie być wspierana
     description: Wykryto wtyczkę, która została wycofana z katalogu WordPressa.
     business_risk: Problemy bezpieczeństwa we wtyczce mogą nie otrzymywać poprawek.
     recommendation: Poproś administratora o ocenę wtyczki i rozważenie jej usunięcia lub zastąpienia.
   old_drupal: &old_cms
-    area: website
+    area: applications
     title: System strony wymaga sprawdzenia aktualizacji
     description: Wykryto wersję systemu strony, która może być nieaktualna.
     business_risk: Znane błędy mogą umożliwić atak na stronę lub jej dane.
@@ -172,7 +177,7 @@ report_types:
   insecure_wordpress: *old_cms
   obsolete_moodle_version_found: *old_cms
   technology_cve_found:
-    area: website
+    area: applications
     title: Możliwa podatność wykrytej technologii
     description: Wersja wykrytej technologii może być powiązana ze znaną podatnością.
     business_risk: Podatność może ułatwiać atak lub zakłócenie działania usługi.
@@ -190,7 +195,7 @@ report_types:
     business_risk: Osoba postronna może wykorzystać nieaktualną konfigurację.
     recommendation: Poproś administratora o sprawdzenie i usunięcie niepotrzebnej konfiguracji.
   script_unregistered_domain:
-    area: website
+    area: applications
     title: Strona korzysta z zasobu w niezarejestrowanej domenie
     description: Wykryto odwołanie do skryptu w domenie, która może być dostępna do rejestracji.
     business_risk: Przejęcie domeny może umożliwić dostarczenie niebezpiecznego kodu użytkownikom strony.
@@ -202,14 +207,14 @@ report_types:
     business_risk: Informacje o infrastrukturze mogą ułatwić próby ataku na konta firmowe.
     recommendation: Poproś administratora o sprawdzenie potrzeby publicznego dostępu i konfiguracji usługi.
   certificate_authority_invalid: &certificate
-    area: website
+    area: domain
     title: Problem z certyfikatem usługi
     description: Wykryto problem z certyfikatem zabezpieczającym połączenie.
     business_risk: Użytkownicy mogą otrzymywać ostrzeżenia lub nie móc bezpiecznie korzystać z usługi.
     recommendation: Poproś administratora o sprawdzenie i poprawienie certyfikatu.
   bad_certificate_names: *certificate
   no_https_redirect:
-    area: website
+    area: domain
     title: Strona nie zawsze wymusza bezpieczne połączenie
     description: Połączenia przez HTTP mogą nie być przekierowywane na szyfrowane HTTPS.
     business_risk: Dane przesyłane przez niezabezpieczone połączenie mogą być przechwycone.
@@ -221,13 +226,13 @@ report_types:
     business_risk: Atakujący aktywnie wykorzystują takie podatności, aby dostać się do sieci firmy i wykraść lub zaszyfrować dane.
     recommendation: Pilnie poproś administratora o aktualizację oprogramowania urządzenia i sprawdzenie, czy nie doszło do włamania.
   heartbleed:
-    area: website
+    area: domain
     title: Krytyczna podatność szyfrowania połączeń (Heartbleed)
     description: Serwer używa wersji oprogramowania szyfrującego podatnej na znany błąd Heartbleed.
     business_risk: Atakujący może odczytać z pamięci serwera hasła, klucze szyfrujące i dane klientów.
     recommendation: Pilnie zaktualizuj oprogramowanie serwera, a następnie wymień certyfikat i hasła.
   robot:
-    area: website
+    area: domain
     title: Słabe szyfrowanie połączeń z serwerem
     description: Serwer jest podatny na znany atak na szyfrowanie połączeń (ROBOT).
     business_risk: W pewnych warunkach atakujący może odszyfrować przechwycone połączenia z serwerem.
@@ -239,7 +244,7 @@ report_types:
     business_risk: Osoba postronna może zarejestrować tę usługę i opublikować pod adresem firmy własną treść, np. fałszywą stronę logowania.
     recommendation: Poproś administratora domeny o usunięcie lub poprawienie nieużywanego wpisu DNS.
   nuclei_exposed_panel:
-    area: website
+    area: applications
     title: Panel administracyjny widoczny w internecie
     description: Strona logowania do panelu zarządzania usługą jest dostępna dla każdego z internetu.
     business_risk: Atakujący mogą próbować odgadnąć hasło lub wykorzystać błędy panelu, aby przejąć kontrolę nad usługą.
@@ -256,49 +261,49 @@ nuclei: {}
 nuclei_classes:
   - key: remote_code_execution
     match: {paths: [rce, cmdi, command-injection, deserialization], tags: [rce, cmdi, deserialization, ssti]}
-    area: website
+    area: applications
     title: Możliwe przejęcie kontroli nad serwerem
     description: Wykryto podatność, która może pozwolić osobie z internetu na uruchamianie własnych poleceń na serwerze.
     business_risk: Atakujący może przejąć serwer, wykraść dane, zaszyfrować je dla okupu lub wykorzystać serwer do dalszych ataków.
     recommendation: Pilnie przekaż wynik administratorowi lub dostawcy usługi - podatność wymaga natychmiastowej aktualizacji lub zabezpieczenia.
   - key: sql_injection
     match: {paths: [sqli], tags: [sqli]}
-    area: website
+    area: applications
     title: Możliwy nieuprawniony dostęp do bazy danych strony
     description: Aplikacja może przekazywać dane wpisane przez użytkownika bezpośrednio do bazy danych.
     business_risk: Atakujący może odczytać lub zmienić dane przechowywane przez aplikację, np. dane klientów lub hasła.
     recommendation: Pilnie przekaż wynik dostawcy aplikacji do naprawy.
   - key: cross_site_scripting
     match: {paths: [xss], tags: [xss]}
-    area: website
+    area: applications
     title: Podatność mogąca zagrozić użytkownikom strony
     description: Strona może umożliwiać umieszczenie niebezpiecznego kodu, który uruchomi się w przeglądarce odwiedzających.
     business_risk: Atakujący może podszyć się pod użytkownika strony, przejąć jego sesję lub wyłudzić dane.
     recommendation: Poproś dostawcę strony o poprawienie obsługi wprowadzanych danych.
   - key: file_read
     match: {paths: [lfi, path-traversal], tags: [lfi, traversal, file-read]}
-    area: website
+    area: applications
     title: Możliwy dostęp do plików serwera
     description: Wykryto podatność, która może pozwalać na odczyt plików z serwera, w tym plików konfiguracyjnych.
     business_risk: Osoba postronna może poznać hasła, klucze lub dane zapisane na serwerze.
     recommendation: Pilnie poproś administratora lub dostawcę aplikacji o aktualizację i weryfikację, czy dane nie wyciekły.
   - key: server_side_request_forgery
     match: {paths: [ssrf], tags: [ssrf]}
-    area: website
+    area: applications
     title: Serwer może zostać użyty do ataku na sieć wewnętrzną
     description: Aplikacja może wykonywać połączenia pod adresy wskazane przez osobę z zewnątrz.
     business_risk: Atakujący może dotrzeć do systemów niedostępnych z internetu lub wykraść dane dostępowe usług chmurowych.
     recommendation: Przekaż wynik dostawcy aplikacji do naprawy.
   - key: authentication_bypass
     match: {paths: [auth-bypass], tags: [auth-bypass, unauth, unauthenticated]}
-    area: website
+    area: applications
     title: Dostęp do funkcji bez logowania
     description: Część usługi, która powinna wymagać logowania, może być dostępna bez hasła.
     business_risk: Osoba postronna może korzystać z funkcji administracyjnych lub przeglądać dane bez uprawnień.
     recommendation: Pilnie poproś administratora o aktualizację usługi i ograniczenie dostępu.
   - key: default_login
     match: {paths: [default-logins, default-login], tags: [default-login]}
-    area: website
+    area: passwords
     title: Domyślne hasło dostępu do usługi
     description: Do usługi można zalogować się przy użyciu domyślnej nazwy użytkownika i hasła ustawionych przez producenta.
     business_risk: Domyślne hasła są publicznie znane - każdy może zalogować się i przejąć kontrolę nad usługą.
@@ -312,63 +317,63 @@ nuclei_classes:
     recommendation: Poproś administratora domeny o usunięcie lub poprawienie nieużywanego wpisu DNS.
   - key: exposed_secrets
     match: {paths: [exposures/tokens, exposures/keys], tags: [token, tokens, keys, secret, secrets, api-key]}
-    area: website
+    area: passwords
     title: Publicznie dostępne klucze lub hasła
     description: W publicznie dostępnej treści znaleziono dane wyglądające na klucze dostępowe lub hasła.
     business_risk: Osoba postronna może użyć tych danych, aby dostać się do systemów lub usług firmy, również płatnych.
     recommendation: Pilnie unieważnij i wymień ujawnione klucze oraz hasła i usuń je z publicznej treści.
   - key: exposed_backup
     match: {paths: [exposures/backups], tags: [backup]}
-    area: website
+    area: files
     title: Publicznie dostępna kopia zapasowa
     description: Na serwerze znaleziono kopię zapasową dostępną dla każdego z internetu.
     business_risk: Kopia może zawierać kod strony, bazę danych lub hasła, które ułatwią atak lub doprowadzą do wycieku danych.
     recommendation: Poproś administratora o usunięcie kopii z publicznego miejsca i sprawdzenie, czy zawierała dane wrażliwe.
   - key: exposed_configuration
     match: {paths: [exposures/configs], tags: [config]}
-    area: website
+    area: files
     title: Publicznie dostępny plik konfiguracyjny
     description: Na serwerze znaleziono plik konfiguracyjny dostępny dla każdego z internetu.
     business_risk: Plik może zawierać hasła lub informacje o systemach, które ułatwią atak.
     recommendation: Poproś administratora o zablokowanie dostępu do pliku i wymianę haseł, które mogły się w nim znaleźć.
   - key: exposed_logs
     match: {paths: [exposures/logs], tags: [logs]}
-    area: website
+    area: files
     title: Publicznie dostępne dzienniki systemowe
     description: Na serwerze znaleziono pliki dziennika (logi) dostępne dla każdego z internetu.
     business_risk: Logi mogą zawierać dane klientów, adresy wewnętrzne lub informacje o błędach ułatwiające atak.
     recommendation: Poproś administratora o zablokowanie dostępu do logów.
   - key: exposure
     match: {paths: [exposures], tags: [exposure]}
-    area: website
+    area: files
     title: Publicznie dostępne informacje, które nie powinny być widoczne
     description: Serwer udostępnia plik lub informacje przeznaczone tylko do użytku wewnętrznego.
     business_risk: Ujawnione informacje mogą ułatwić przygotowanie ataku lub zawierać dane firmy.
     recommendation: Poproś administratora o sprawdzenie wskazanego zasobu i ograniczenie do niego dostępu.
   - key: known_vulnerability
     match: {paths: [cves, cnvd], tags: [cve, kev, cnvd]}
-    area: website
+    area: applications
     title: Znana podatność w używanym oprogramowaniu
     description: Wykryto oprogramowanie z opisaną publicznie podatnością bezpieczeństwa.
     business_risk: Dla znanych podatności często istnieją gotowe narzędzia, więc atak może być łatwy do przeprowadzenia.
     recommendation: Poproś administratora o aktualizację oprogramowania do wersji z poprawką bezpieczeństwa.
   - key: misconfiguration
     match: {paths: [misconfiguration], tags: [misconfig]}
-    area: website
+    area: applications
     title: Nieprawidłowa konfiguracja usługi
     description: Usługa jest skonfigurowana w sposób, który obniża jej bezpieczeństwo.
     business_risk: Błędna konfiguracja może ułatwić atak lub ujawnić informacje o systemie.
     recommendation: Poproś administratora o poprawienie konfiguracji zgodnie z zaleceniami producenta.
   - key: vulnerable_software
     match: {paths: [vulnerabilities], tags: [vuln]}
-    area: website
+    area: applications
     title: Podatność w aplikacji lub jej dodatku
     description: Wykryto podatność w aplikacji, wtyczce lub module używanym przez stronę.
     business_risk: Podatność może umożliwić atak na stronę, jej użytkowników lub dane.
     recommendation: Poproś administratora o aktualizację aplikacji i jej dodatków.
   - key: certificate_problem
     match: {paths: [ssl], tags: [ssl, tls]}
-    area: website
+    area: domain
     title: Problem z zabezpieczeniem połączenia
     description: Wykryto problem z certyfikatem lub szyfrowaniem połączenia z usługą.
     business_risk: Połączenie może nie być w pełni chronione, a klienci mogą widzieć ostrzeżenia przeglądarki.
@@ -377,26 +382,26 @@ nuclei_classes:
 # Used when a finding has neither a curated entry nor a class.
 by_severity:
   high:
-    area: unknown
+    area: applications
     title: Poważny problem bezpieczeństwa wymagający pilnej oceny
     description: Skan wykrył problem oznaczony jako poważny, dla którego nie ma jeszcze zatwierdzonego opisu.
     business_risk: Problemy tego rodzaju często umożliwiają atak na firmę lub wyciek danych.
     recommendation: Pilnie przekaż wynik administratorowi lub opiekunowi IT do analizy.
   medium:
-    area: unknown
+    area: applications
     title: Problem bezpieczeństwa wymagający oceny
     description: Skan wykrył problem o średnim znaczeniu, dla którego nie ma jeszcze zatwierdzonego opisu.
     business_risk: Problem może ułatwić atak, zwłaszcza w połączeniu z innymi słabościami.
     recommendation: Przekaż wynik administratorowi do analizy w najbliższym czasie.
   low:
-    area: unknown
+    area: applications
     title: Drobny problem bezpieczeństwa
     description: Skan wykrył problem o niskim znaczeniu, dla którego nie ma jeszcze zatwierdzonego opisu.
     business_risk: Bezpośrednie zagrożenie jest niewielkie, ale warto usunąć problem przy okazji innych prac.
     recommendation: Przekaż wynik administratorowi przy najbliższym przeglądzie systemów.
 
 generic:
-  area: unknown
+  area: applications
   title: Wykryto problem wymagający oceny
   description: Skan wykrył problem, dla którego nie ma jeszcze zatwierdzonego opisu.
   business_risk: Wpływ na firmę wymaga oceny specjalisty.

@@ -136,8 +136,26 @@ docker compose -f docker-compose.dev.yaml exec cybercover-reports python3 -m cyb
 Run it after adding catalog entries and after Artemis or Artemis-modules-extra upgrades (new report
 types appear under `missing`).
 
+**Areas.** Every finding has one of the five `area` values of the portal's cyber shield (codes; the
+portal shows its own labels):
+
+| `area` | What belongs there |
+|---|---|
+| `domain` | DNS and the domain: zone transfer, domain expiry, dangling records, subdomain takeover, e-mail (SPF/DMARC), certificates and HTTPS/TLS |
+| `network` | Network services and open ports: remote desktop, databases, SMB, Telnet, FTP, NTLM, VPN appliances |
+| `passwords` | Weak or default passwords, and exposed or leaked credentials (password files, keys, shell history, Git folders with credentials, secrets) |
+| `applications` | Websites and web applications: outdated CMS and plugins, known vulnerabilities, injections, admin panels, security headers |
+| `files` | Exposed files without credentials: backups, archives, configuration, logs, SQL dumps, directory listings, source code |
+
+Curated entries define their area in `catalog/pl.yaml`; `validate_catalog` accepts only these five.
+For Nuclei findings without a curated text, `passwords`, `files` and `domain` classes keep their area
+(e.g. a default login is `passwords` on any protocol); otherwise the template decides: `network/` and
+`javascript/` templates (or the `network` tag) are `network`, `dns/` and `ssl/` are `domain`, and
+everything else is `applications`.
+
 `summary` gives the overall `risk_level` (`high`/`medium`/`low`/`none`), a Polish `headline`, counts
-`by_severity` and `by_area`, and up to three `top_actions` (distinct recommendations, most important
+`by_severity` and `by_area` (always all five areas, in the order above, with 0 for areas without
+findings), and up to three `top_actions` (distinct recommendations, most important
 first, with the problems they address).
 
 `assets` are inventory observations, one entry per asset (the same IP or port found with and without

@@ -15,6 +15,15 @@ FIELDS = ("area", "title", "description", "business_risk", "recommendation")
 SEVERITIES = ("high", "medium", "low")
 RISK_LEVELS = ("high", "medium", "low", "none")
 
+# The areas of the portal's cyber shield, in display order. Every catalog entry has one of them.
+AREAS = ("domain", "network", "passwords", "applications", "files")
+DEFAULT_AREA = "applications"
+# For Nuclei findings without a curated text, these kinds of problem keep their class area; for the
+# others (e.g. a known vulnerability) the area follows the protocol of the template.
+KIND_AREAS = frozenset({"domain", "passwords", "files"})
+NETWORK_TEMPLATE_DIRS = frozenset({"network", "javascript"})
+DOMAIN_TEMPLATE_DIRS = frozenset({"dns", "ssl"})
+
 # How specific the business text of a finding is (from the best to the worst):
 #   curated  - reviewed text for this exact report type or Nuclei template,
 #   class    - text for the kind of problem (e.g. default login, exposed backup) of a Nuclei template,
@@ -28,6 +37,8 @@ def _check_entry(entry: Any, name: str) -> None:
         not isinstance(entry.get(field), str) or not entry[field].strip() for field in FIELDS
     ):
         raise ValueError(f"Incomplete catalog entry {name}")
+    if entry["area"] not in AREAS:
+        raise ValueError(f"Catalog entry {name} has area {entry['area']!r}, expected one of {', '.join(AREAS)}")
 
 
 def _check_strings(values: Any, name: str) -> None:
@@ -101,6 +112,25 @@ def nuclei_class(template_path: Optional[str], tags: Iterable[str], catalog: dic
     return None
 
 
+def nuclei_area(template_path: Optional[str], tags: Iterable[str], class_area: Optional[str]) -> str:
+    """The area of a Nuclei finding without a curated text.
+
+    The kind of problem decides for passwords, files and domain classes (e.g. a default login is
+    "passwords" whatever the protocol). Otherwise the template's protocol does: templates under
+    network/ or javascript/ (or tagged "network") are "network", dns/ and ssl/ are "domain"; the rest
+    keeps the class area, or "applications".
+    """
+    if class_area in KIND_AREAS:
+        return class_area
+    top = template_path.split("/", 1)[0].lower() if template_path and not template_path.startswith("custom:") else ""
+    tag_set = set(tags)
+    if top in NETWORK_TEMPLATE_DIRS or "network" in tag_set:
+        return "network"
+    if top in DOMAIN_TEMPLATE_DIRS or tag_set & {"dns", "ssl", "tls"}:
+        return "domain"
+    return class_area or DEFAULT_AREA
+
+
 def enrich(report: Report, catalog: dict[str, Any]) -> dict[str, Any]:
     report_type = str(report.report_type)
     template_id = report.additional_data.get("template_id")
@@ -146,4 +176,7 @@ def enrich(report: Report, catalog: dict[str, Any]) -> dict[str, Any]:
         },
     }
     result.update({field: entry[field] for field in FIELDS})
+    if template_id and level != "curated":
+        class_area = entry["area"] if level == "class" else None
+        result["area"] = nuclei_area(report.additional_data.get("original_template_name"), _tags(report), class_area)
     return result
