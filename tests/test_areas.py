@@ -40,7 +40,7 @@ def test_every_catalog_entry_uses_one_of_the_five_areas():
         ("report_types:exposed_sql_dump", "files"),
         ("report_types:directory_index", "files"),
         ("report_types:old_wordpress", "applications"),
-        ("report_types:nuclei_exposed_panel", "applications"),
+        ("nuclei_classes:exposed_panel", "applications"),
         ("nuclei_classes:default_login", "passwords"),
         ("nuclei_classes:exposed_secrets", "passwords"),
         ("nuclei_classes:exposed_backup", "files"),
@@ -94,14 +94,34 @@ def _finding(make_row, template_id, path, severity="high", tags=None):
 
 def test_network_cve_gets_the_network_area(make_row):
     entry = _finding(make_row, "openssh-cve", "network/cves/2026/CVE-2026-123158.yaml", tags=["cve", "ssh"])
-    assert entry["catalog"] in ("class", "severity") and entry["area"] == "network"
+    assert entry["text_level"] in ("class", "severity") and entry["area"] == "network"
 
 
 def test_default_login_is_passwords_on_any_protocol(make_row):
     entry = _finding(make_row, "ftp-default", "network/default-logins/ftp/ftp-default.yaml", tags=["default-login"])
-    assert entry["catalog_class"] == "default_login" and entry["area"] == "passwords"
+    assert entry["text_entry_used"] == "nuclei_classes.default_login" and entry["area"] == "passwords"
 
 
 def test_web_finding_without_class_is_applications(make_row):
     entry = _finding(make_row, "odd-web", "http/miscellaneous/odd.yaml", tags=["misc"])
     assert entry["area"] == "applications"
+
+
+def test_template_text_for_grafana_default_login(make_row):
+    """The first per-template text: its own wording and the passwords area."""
+    entry = _finding(make_row, "grafana-default-login", "http/default-logins/grafana/grafana-default-login.yaml",
+                     tags=["grafana", "default-login"])
+    assert entry["text_level"] == "template"
+    assert entry["text_entry_used"] == entry["curation_key"] == "nuclei.grafana-default-login"
+    assert entry["area"] == "passwords"
+    assert "Grafan" in entry["title"]
+
+
+def test_generic_level_names_the_generic_entry(make_row, monkeypatch):
+    from cybercover_reports.catalog import enrich
+
+    catalog = load_catalog()
+    catalog["by_severity"] = {}
+    row = nuclei_rows(make_row, nuclei_finding("odd", "http/miscellaneous/odd.yaml"))
+    entry = enrich(process_results(row, []).reports[0], catalog)
+    assert (entry["text_level"], entry["text_entry_used"]) == ("generic", "generic")

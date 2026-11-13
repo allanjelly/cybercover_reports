@@ -17,7 +17,7 @@ from artemis.db import DB
 from artemis.json_utils import JSONEncoderAdditionalTypes
 from artemis.karton_utils import get_num_pending_tasks
 
-from .catalog import enrich, load_catalog
+from .catalog import SPECIFIC_LEVELS, enrich, load_catalog
 from .loader import load_analyses, load_results
 from .reporting import ProcessedResults, process_results
 from .summary import sort_findings
@@ -161,7 +161,9 @@ def findings(analysis_id: UUID) -> dict:
             "partial_reasons": reasons,
             "generated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
             "findings": entries,
-            "untranslated": sorted({item["catalog_key"] for item in entries if item["catalog"] != "curated"}),
+            "without_specific_text": sorted(
+                {item["curation_key"] for item in entries if item["text_level"] not in SPECIFIC_LEVELS}
+            ),
             "scanned_targets": processed.scanned_targets,
             "alerts": processed.alerts,
             "task_status_counts": processed.status_counts,
@@ -271,7 +273,9 @@ def posture(target: Annotated[list[str], Query()], tag: Optional[str] = None) ->
             "results_may_be_partial": bool(reasons),
             "partial_reasons": sorted(reasons),
             "findings": entries,
-            "untranslated": sorted({item["catalog_key"] for item in entries if item["catalog"] != "curated"}),
+            "without_specific_text": sorted(
+                {item["curation_key"] for item in entries if item["text_level"] not in SPECIFIC_LEVELS}
+            ),
             "alerts": alerts,
             "task_status_counts": status_counts,
             "module_errors": module_errors,

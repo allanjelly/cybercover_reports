@@ -243,22 +243,31 @@ report_types:
     description: Adres w domenie firmy wskazuje na zewnętrzną usługę, która nie jest już używana.
     business_risk: Osoba postronna może zarejestrować tę usługę i opublikować pod adresem firmy własną treść, np. fałszywą stronę logowania.
     recommendation: Poproś administratora domeny o usunięcie lub poprawienie nieużywanego wpisu DNS.
-  nuclei_exposed_panel:
-    area: applications
-    title: Panel administracyjny widoczny w internecie
-    description: Strona logowania do panelu zarządzania usługą jest dostępna dla każdego z internetu.
-    business_risk: Atakujący mogą próbować odgadnąć hasło lub wykorzystać błędy panelu, aby przejąć kontrolę nad usługą.
-    recommendation: Poproś administratora o ograniczenie dostępu do panelu (np. tylko z sieci firmowej lub przez VPN) i włączenie silnego uwierzytelniania.
 
-# Reviewed texts for individual Nuclei templates, keyed by template-id. They take precedence over
-# nuclei_classes. Add entries for templates that frequently occur in customer scans.
-nuclei: {}
+# Texts for individual Nuclei templates, keyed by template-id. They take precedence over
+# nuclei_classes. Add entries for templates that frequently occur in customer scans (the response's
+# without_specific_text lists the candidates as curation keys "nuclei.<template-id>").
+nuclei:
+  grafana-default-login:
+    area: passwords
+    title: Domyślne hasło administratora w Grafanie
+    description: Do panelu Grafana (narzędzia do wykresów i monitoringu) można zalogować się jako administrator przy użyciu fabrycznego loginu i hasła (admin/admin).
+    business_risk: Każdy w internecie może przejąć panel, zobaczyć dane z monitorowanych systemów firmy, zmienić konfigurację lub wykorzystać zapisane w Grafanie hasła do baz danych i innych usług.
+    recommendation: Natychmiast zmień hasło administratora Grafany na silne i unikalne, sprawdź listę kont i źródeł danych, a dostęp do panelu ogranicz do sieci firmowej lub VPN.
 
 # Kinds of problems detected by Nuclei templates, used when a template has no entry in `nuclei`.
 # Checked in order - the first class whose path fragment occurs in the template path
 # (e.g. "default-logins" matches http/default-logins/grafana/x.yaml) or whose tag the template has wins,
 # so the most specific classes come first.
 nuclei_classes:
+  # Matched by folder only: other templates (e.g. default logins) can carry the "panel" tag.
+  - key: exposed_panel
+    match: {paths: [exposed-panels]}
+    area: applications
+    title: Panel administracyjny widoczny w internecie
+    description: Strona logowania do panelu zarządzania usługą jest dostępna dla każdego z internetu.
+    business_risk: Atakujący mogą próbować odgadnąć hasło lub wykorzystać błędy panelu, aby przejąć kontrolę nad usługą.
+    recommendation: Poproś administratora o ograniczenie dostępu do panelu (np. tylko z sieci firmowej lub przez VPN) i włączenie silnego uwierzytelniania.
   - key: remote_code_execution
     match: {paths: [rce, cmdi, command-injection, deserialization], tags: [rce, cmdi, deserialization, ssti]}
     area: applications

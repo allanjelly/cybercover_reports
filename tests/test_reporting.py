@@ -41,9 +41,9 @@ def test_standard_and_incremental_nuclei_are_deduplicated(make_row):
     assert report.additional_data["template_id"] == "CVE-2023-0001"
     assert report.severity.value == "high"
     entry = enrich(report, load_catalog())
-    assert entry["catalog"] == "class"  # http/cves/... -> known vulnerability text
-    assert entry["catalog_class"] == "known_vulnerability"
-    assert entry["catalog_key"] == "nuclei:CVE-2023-0001"
+    assert entry["text_level"] == "class"  # http/cves/... -> known vulnerability text
+    assert entry["text_entry_used"] == "nuclei_classes.known_vulnerability"
+    assert entry["curation_key"] == "nuclei.CVE-2023-0001"
     assert entry["business_risk"]
     assert entry["id"] == enrich(report, load_catalog())["id"]
 
@@ -88,7 +88,8 @@ def test_discovery_uses_artemis_port_reporter(make_row, receiver):
     assert [str(report.report_type) for report in result.reports] == ["open_port_remote_desktop"]
     assert len([a for a in result.assets if a.asset_type.value == "open_port"]) == 2
     entry = enrich(result.reports[0], load_catalog())
-    assert entry["catalog"] == "curated"
+    assert entry["text_level"] == "report_type"
+    assert entry["text_entry_used"] == entry["curation_key"] == "report_types.open_port_remote_desktop"
     assert entry["area"] == "network"
 
 
@@ -123,7 +124,7 @@ def test_mail_reporter_and_catalog(make_row):
     reports = process_results([row, www], []).reports
     assert len(reports) == 1
     assert reports[0].additional_data["type"] == "DMARC"
-    assert enrich(reports[0], load_catalog())["catalog"] == "curated"
+    assert enrich(reports[0], load_catalog())["text_level"] == "report_type"
 
 
 def test_noninteresting_result_cannot_create_report(make_row):

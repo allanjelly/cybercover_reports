@@ -13,7 +13,7 @@ from artemis.reporting.base.reporters import get_all_reporters
 from .catalog import load_catalog
 
 # Nuclei findings are described per template (catalog `nuclei`) or by class, not by report type.
-DESCRIBED_ELSEWHERE = {"nuclei_vulnerability"}
+DESCRIBED_ELSEWHERE = {"nuclei_vulnerability", "nuclei_exposed_panel"}
 
 
 def artemis_report_types() -> set[str]:

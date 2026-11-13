@@ -109,8 +109,8 @@ extension that adds the header.
 ## Response
 
 `findings` are sorted by severity and contain `id`, `severity` (Artemis high/medium/low), `area`,
-`asset`, `title`, `description`, `business_risk`, `recommendation`, `catalog`, `catalog_key`,
-`catalog_class` and `technical` (`report_type`, `additional_data` with the reporter's details such as
+`asset`, `title`, `description`, `business_risk`, `recommendation`, `text_level`,
+`text_entry_used`, `curation_key` and `technical` (`report_type`, `additional_data` with the reporter's details such as
 the template id, tags and matched URL, `is_suspicious`, and `original_task_result_id`: the id of the
 raw Artemis task result, for support to look up the request, response and matched data). In the posture response each finding also
 has `first_seen` and `last_seen` (analysis id, time, scan type). The technical data and alerts are
@@ -118,19 +118,30 @@ intended for the portal and operators, not automatically for customers. Counts b
 the overall risk and the list of recommendations are left to the portal: they follow directly from
 `findings`.
 
-**Business texts** come from `catalog/pl.yaml`, looked up from the most to the least specific; `catalog`
-says which level was used:
+**Business texts** come from `catalog/pl.yaml`, looked up from the most to the least specific:
 
-1. `curated` - a reviewed entry for the Nuclei `template-id` (`nuclei`) or the report type (`report_types`);
-2. `class` - for Nuclei findings, the kind of problem (`nuclei_classes`, e.g. `default_login`,
-   `exposed_backup`, `known_vulnerability`), matched by template path segments, then tags; the first
-   matching class in file order wins, so the most specific classes come first;
-3. `severity` - a text chosen by severity only (`by_severity`);
-4. `fallback` - the generic text (`generic`).
+- Nuclei findings: `template` -> `class` -> `severity` -> `generic`;
+- findings of other modules: `report_type` -> `severity` -> `generic`.
 
-Keys of all findings below `curated` appear in `untranslated`. Review
-catalog texts before presenting them to customers. No LLM is called by the service. To see which Artemis
-report types lack a curated text, or catalog keys that are not report types (typos):
+| `text_level` | The texts come from | `text_entry_used` example |
+|---|---|---|
+| `template` | the entry for this Nuclei template-id (section `nuclei`) | `nuclei.grafana-default-login` |
+| `report_type` | the entry for this Artemis report type (section `report_types`) | `report_types.old_wordpress` |
+| `class` | the kind of problem of a Nuclei template (`nuclei_classes`, e.g. `default_login`, `exposed_panel`, `known_vulnerability`): matched by template folders, then tags; the first matching class in file order wins, so the most specific classes come first | `nuclei_classes.default_login` |
+| `severity` | a text chosen by severity only (`by_severity`) | `by_severity.high` |
+| `generic` | the generic text | `generic` |
+
+`template` and `report_type` texts are specific to the finding; the others are borrowed. Artemis' own
+report types are not used for Nuclei texts: nearly every template is `nuclei_vulnerability`, and
+exposed panels (`nuclei_exposed_panel`) are covered by the `exposed_panel` class.
+
+`curation_key` says where a text specific to the finding would go: `nuclei.<template-id>` or
+`report_types.<report type>`. It is stable, while `text_entry_used` changes when catalog rules change.
+When the two are equal, the finding has its own text. `without_specific_text` lists the curation keys
+of all findings whose text is borrowed (`class`, `severity`, `generic`): candidates for new catalog
+entries. Every finding has a Polish text either way. All catalog texts are unreviewed drafts so far;
+review them before presenting them to customers. No LLM is called by the service. To see which Artemis
+report types lack a text, or catalog keys that are not report types (typos):
 
 ```sh
 docker compose -f docker-compose.dev.yaml exec cybercover-reports python3 -m cybercover_reports.coverage
@@ -151,8 +162,8 @@ portal shows its own labels):
 | `applications` | Websites and web applications: outdated CMS and plugins, known vulnerabilities, injections, admin panels, security headers |
 | `files` | Exposed files without credentials: backups, archives, configuration, logs, SQL dumps, directory listings, source code |
 
-Curated entries define their area in `catalog/pl.yaml`; `validate_catalog` accepts only these five.
-For Nuclei findings without a curated text, `passwords`, `files` and `domain` classes keep their area
+Template and report-type entries define their area in `catalog/pl.yaml`; `validate_catalog` accepts only
+these five. For Nuclei findings without a template text, `passwords`, `files` and `domain` classes keep their area
 (e.g. a default login is `passwords` on any protocol); otherwise the template decides: `network/` and
 `javascript/` templates (or the `network` tag) are `network`, `dns/` and `ssl/` are `domain`, and
 everything else is `applications`.
@@ -214,15 +225,15 @@ the current drafts of `catalog/pl.yaml`.
   "pending_tasks": 0,
   "results_may_be_partial": false,
   "partial_reasons": [],
-  "generated_at": "2026-11-13T09:58:16.613144+00:00",
+  "generated_at": "2026-11-13T10:49:50.713100+00:00",
   "findings": [
     {
       "id": "62991ece6b029dab59f2ff142ff6f457c061f691b88cf67baf7c3e06a9962ce9",
       "severity": "high",
       "asset": "ssh://example.com:22",
-      "catalog_key": "nuclei:CVE-2026-123158",
-      "catalog": "class",
-      "catalog_class": "known_vulnerability",
+      "text_level": "class",
+      "text_entry_used": "nuclei_classes.known_vulnerability",
+      "curation_key": "nuclei.CVE-2026-123158",
       "technical": {
         "report_type": "nuclei_vulnerability",
         "additional_data": {
@@ -256,8 +267,8 @@ the current drafts of `catalog/pl.yaml`.
       "recommendation": "Poproś administratora o aktualizację oprogramowania do wersji z poprawką bezpieczeństwa."
     }
   ],
-  "untranslated": [
-    "nuclei:CVE-2026-123158"
+  "without_specific_text": [
+    "nuclei.CVE-2026-123158"
   ],
   "scanned_targets": [
     "example.com"
@@ -283,7 +294,7 @@ the current drafts of `catalog/pl.yaml`.
     "example.com"
   ],
   "tag": null,
-  "generated_at": "2026-11-13T09:58:16.646510+00:00",
+  "generated_at": "2026-11-13T10:49:50.735680+00:00",
   "per_target": [
     {
       "target": "example.com",
@@ -326,9 +337,9 @@ the current drafts of `catalog/pl.yaml`.
       "id": "62991ece6b029dab59f2ff142ff6f457c061f691b88cf67baf7c3e06a9962ce9",
       "severity": "high",
       "asset": "ssh://example.com:22",
-      "catalog_key": "nuclei:CVE-2026-123158",
-      "catalog": "class",
-      "catalog_class": "known_vulnerability",
+      "text_level": "class",
+      "text_entry_used": "nuclei_classes.known_vulnerability",
+      "curation_key": "nuclei.CVE-2026-123158",
       "technical": {
         "report_type": "nuclei_vulnerability",
         "additional_data": {
@@ -383,9 +394,9 @@ the current drafts of `catalog/pl.yaml`.
       "id": "0c82a6c3fe592541b714952af346407b97f786a820dcca3b4ec584d034004034",
       "severity": "high",
       "asset": "http://example.com:3000",
-      "catalog_key": "nuclei:grafana-default-login",
-      "catalog": "class",
-      "catalog_class": "default_login",
+      "text_level": "template",
+      "text_entry_used": "nuclei.grafana-default-login",
+      "curation_key": "nuclei.grafana-default-login",
       "technical": {
         "report_type": "nuclei_vulnerability",
         "additional_data": {
@@ -411,10 +422,10 @@ the current drafts of `catalog/pl.yaml`.
         "original_task_result_id": "full-nuclei"
       },
       "area": "passwords",
-      "title": "Domyślne hasło dostępu do usługi",
-      "description": "Do usługi można zalogować się przy użyciu domyślnej nazwy użytkownika i hasła ustawionych przez producenta.",
-      "business_risk": "Domyślne hasła są publicznie znane - każdy może zalogować się i przejąć kontrolę nad usługą.",
-      "recommendation": "Niezwłocznie zmień hasło na silne i unikalne oraz ogranicz dostęp do usługi z internetu.",
+      "title": "Domyślne hasło administratora w Grafanie",
+      "description": "Do panelu Grafana (narzędzia do wykresów i monitoringu) można zalogować się jako administrator przy użyciu fabrycznego loginu i hasła (admin/admin).",
+      "business_risk": "Każdy w internecie może przejąć panel, zobaczyć dane z monitorowanych systemów firmy, zmienić konfigurację lub wykorzystać zapisane w Grafanie hasła do baz danych i innych usług.",
+      "recommendation": "Natychmiast zmień hasło administratora Grafany na silne i unikalne, sprawdź listę kont i źródeł danych, a dostęp do panelu ogranicz do sieci firmowej lub VPN.",
       "first_seen": {
         "analysis_id": "6f1c2a4e-1d2b-4c1a-9a51-2f0e8b7c1a01",
         "target": "example.com",
@@ -438,9 +449,9 @@ the current drafts of `catalog/pl.yaml`.
       "id": "dd64be2dc0f47813003db73ab9c82202657aae1fa0c118791004f5a3e5162cd9",
       "severity": "low",
       "asset": "http://example.com:3000/login",
-      "catalog_key": "nuclei:grafana-detect",
-      "catalog": "curated",
-      "catalog_class": null,
+      "text_level": "class",
+      "text_entry_used": "nuclei_classes.exposed_panel",
+      "curation_key": "nuclei.grafana-detect",
       "technical": {
         "report_type": "nuclei_exposed_panel",
         "additional_data": {
@@ -485,9 +496,9 @@ the current drafts of `catalog/pl.yaml`.
       }
     }
   ],
-  "untranslated": [
-    "nuclei:CVE-2026-123158",
-    "nuclei:grafana-default-login"
+  "without_specific_text": [
+    "nuclei.CVE-2026-123158",
+    "nuclei.grafana-detect"
   ],
   "alerts": [],
   "task_status_counts": {

@@ -87,7 +87,7 @@ def test_narrow_scan_with_stock_nuclei_does_not_become_the_baseline(artemis_db, 
     data = _posture({"target": "192.0.2.1"}).json()
     assert data["per_target"][0]["baseline"]["analysis_id"] == "full-real"
     assert [a["scan_type"] for a in data["per_target"][0]["analyses"]] == ["full", "custom"]
-    assert [f["catalog_key"] for f in data["findings"]] == ["nuclei:old-cve"]
+    assert [f["curation_key"] for f in data["findings"]] == ["nuclei.old-cve"]
 
 
 # R3: findings of a partially failed incremental run are kept --------------------------------------

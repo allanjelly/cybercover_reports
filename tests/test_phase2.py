@@ -50,16 +50,25 @@ def test_curated_template_entry_wins(make_row, monkeypatch):
     result = process_results(nuclei_rows(make_row, nuclei_finding(
         "grafana-default-login", "http/default-logins/grafana/grafana-default-login.yaml")), [])
     entry = enrich(result.reports[0], catalog)
-    assert (entry["catalog"], entry["title"]) == ("curated", "Reviewed Grafana text")
+    assert (entry["text_level"], entry["title"]) == ("template", "Reviewed Grafana text")
+    assert entry["text_entry_used"] == entry["curation_key"] == "nuclei.grafana-default-login"
 
 
-def test_exposed_panel_uses_its_report_type_text(make_row):
+def test_exposed_panel_uses_the_panel_class(make_row):
     result = process_results(nuclei_rows(make_row, nuclei_finding(
-        "grafana-detect", "http/exposed-panels/grafana-detect.yaml", severity="info")), [])
+        "grafana-detect", "http/exposed-panels/grafana-detect.yaml", severity="info", tags=["panel", "grafana"])), [])
     entry = enrich(result.reports[0], load_catalog())
     assert entry["technical"]["report_type"] == "nuclei_exposed_panel"
-    assert entry["catalog"] == "curated"
+    assert (entry["text_level"], entry["text_entry_used"]) == ("class", "nuclei_classes.exposed_panel")
+    assert entry["curation_key"] == "nuclei.grafana-detect"
     assert entry["title"] == "Panel administracyjny widoczny w internecie"
+
+
+def test_panel_tag_alone_does_not_make_a_panel(make_row):
+    """A default login tagged "panel" keeps the default-login text (exposed_panel matches folders only)."""
+    entry = entry_for(make_row, nuclei_finding(
+        "x-default-login", "http/default-logins/x/x-default-login.yaml", tags=["panel", "default-login"]))
+    assert entry["text_entry_used"] == "nuclei_classes.default_login"
 
 
 @pytest.mark.parametrize(
@@ -78,13 +87,13 @@ def test_exposed_panel_uses_its_report_type_text(make_row):
 )
 def test_nuclei_class_by_path_or_tags(make_row, template, tags, expected):
     entry = entry_for(make_row, nuclei_finding("t", template, tags=tags))
-    assert (entry["catalog"], entry["catalog_class"]) == ("class", expected)
+    assert (entry["text_level"], entry["text_entry_used"]) == ("class", f"nuclei_classes.{expected}")
     assert entry["area"] and entry["recommendation"]
 
 
 def test_unclassified_template_uses_severity_text(make_row):
     entry = entry_for(make_row, nuclei_finding("t", "http/miscellaneous/something.yaml", severity="critical"))
-    assert entry["catalog"] == "severity"
+    assert (entry["text_level"], entry["text_entry_used"]) == ("severity", "by_severity.high")
     assert entry["severity"] == "high"
     assert entry["title"] == load_catalog()["by_severity"]["high"]["title"]
 
@@ -188,15 +197,15 @@ def test_marked_replay_is_cached_endpoint_with_its_source(make_row, source):
 # --- R4: summary ------------------------------------------------------------------------------------
 
 
-def _entry(severity, title, recommendation, area="applications", catalog="class"):
+def _entry(severity, title, recommendation, area="applications", text_level="class"):
     return {"severity": severity, "title": title, "recommendation": recommendation, "area": area,
-            "asset": "x", "catalog": catalog}
+            "asset": "x", "text_level": text_level}
 
 
 def test_findings_are_sorted_by_severity():
     entries = [
         _entry("low", "Low", "Fix later"),
-        _entry("high", "Default login", "Change password", catalog="curated"),
+        _entry("high", "Default login", "Change password", text_level="template"),
         _entry("medium", "Medium", "Fix soon", area="domain"),
         _entry("high", "RCE", "Update now"),
     ]
@@ -250,7 +259,7 @@ def test_extra_module_finding_is_reported_with_curated_text(make_row):
     result = process_results([row], [])
     assert [str(r.report_type) for r in result.reports] == ["no_https_redirect"]
     entry = enrich(result.reports[0], load_catalog())
-    assert entry["catalog"] == "curated"
+    assert entry["text_level"] == "report_type"
     assert entry["title"] == "Strona nie zawsze wymusza bezpieczne połączenie"
 
 
@@ -331,11 +340,12 @@ def test_posture_merges_latest_completed_full_scan_with_later_scans(artemis_db, 
     assert target["baseline"]["analysis_id"] == "full-baseline"
     assert [a["analysis_id"] for a in target["analyses"]] == ["full-baseline", "inc-after", "full-running"]
     assert [a["scan_type"] for a in target["analyses"]] == ["full", "incremental", "full"]
-    by_key = {f["catalog_key"]: f for f in data["findings"]}
-    assert set(by_key) == {"nuclei:grafana-default-login", "nuclei:new-cve"}  # not "only-before"
-    assert by_key["nuclei:grafana-default-login"]["first_seen"]["analysis_id"] == "full-baseline"
-    assert by_key["nuclei:grafana-default-login"]["last_seen"]["analysis_id"] == "inc-after"
-    assert by_key["nuclei:new-cve"]["first_seen"]["scan_type"] == "incremental"
+    by_key = {f["curation_key"]: f for f in data["findings"]}
+    assert set(by_key) == {"nuclei.grafana-default-login", "nuclei.new-cve"}  # not "only-before"
+    assert by_key["nuclei.grafana-default-login"]["first_seen"]["analysis_id"] == "full-baseline"
+    assert by_key["nuclei.grafana-default-login"]["last_seen"]["analysis_id"] == "inc-after"
+    assert by_key["nuclei.new-cve"]["first_seen"]["scan_type"] == "incremental"
+    assert data["without_specific_text"] == ["nuclei.new-cve"]  # grafana-default-login has its own text
     assert data["results_may_be_partial"] and data["partial_reasons"] == ["pending_tasks"]
     assert sorted(f["severity"] for f in data["findings"]) == ["high", "high"]
     assert not {"summary", "assets", "cached_endpoints"} & set(data)
@@ -356,7 +366,7 @@ def test_posture_without_completed_full_scan_uses_all_scans(artemis_db, make_row
                                    headers={"X-API-Token": "test-token"}).json()
     assert data["per_target"][0]["baseline"] is None
     assert data["partial_reasons"] == ["no_completed_full_scan"]
-    assert [f["catalog_key"] for f in data["findings"]] == ["nuclei:new-cve"]
+    assert [f["curation_key"] for f in data["findings"]] == ["nuclei.new-cve"]
 
 
 def test_posture_ignores_errors_of_superseded_incremental_scans(artemis_db, make_row, monkeypatch):

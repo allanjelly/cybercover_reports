@@ -17,18 +17,21 @@ SEVERITIES = ("high", "medium", "low")
 # The areas of the portal's cyber shield, in display order. Every catalog entry has one of them.
 AREAS = ("domain", "network", "passwords", "applications", "files")
 DEFAULT_AREA = "applications"
-# For Nuclei findings without a curated text, these kinds of problem keep their class area; for the
+# For Nuclei findings without a template text, these kinds of problem keep their class area; for the
 # others (e.g. a known vulnerability) the area follows the protocol of the template.
 KIND_AREAS = frozenset({"domain", "passwords", "files"})
 NETWORK_TEMPLATE_DIRS = frozenset({"network", "javascript"})
 DOMAIN_TEMPLATE_DIRS = frozenset({"dns", "ssl"})
 
-# How specific the business text of a finding is (from the best to the worst):
-#   curated  - reviewed text for this exact report type or Nuclei template,
-#   class    - text for the kind of problem (e.g. default login, exposed backup) of a Nuclei template,
-#   severity - text chosen only by the finding's severity,
-#   fallback - generic text; the finding needs a specialist's assessment.
-LEVELS = ("curated", "class", "severity", "fallback")
+# Where the business text of a finding comes from (text_level), from the most to the least specific:
+#   template    - text for this exact Nuclei template (catalog section `nuclei`),
+#   report_type - text for this exact Artemis report type, for findings of other modules,
+#   class       - text for the kind of problem of a Nuclei template (e.g. default login, exposed panel),
+#   severity    - text chosen only by the finding's severity,
+#   generic     - generic text; the finding needs a specialist's assessment.
+# Nuclei: template -> class -> severity -> generic. Other modules: report_type -> severity -> generic.
+LEVELS = ("template", "report_type", "class", "severity", "generic")
+SPECIFIC_LEVELS = frozenset({"template", "report_type"})
 
 
 def _check_entry(entry: Any, name: str) -> None:
@@ -133,35 +136,38 @@ def enrich(report: Report, catalog: dict[str, Any]) -> dict[str, Any]:
     severity = report.severity.value if report.severity else None
 
     entry: Optional[dict[str, Any]] = None
-    level = "fallback"
-    class_key = None
+    level = entry_used = None
     if template_id:
-        key = f"nuclei:{template_id}"
-        entry = catalog["nuclei"].get(template_id) or catalog["report_types"].get(report_type)
+        # Nuclei findings: the template, then the kind of problem. Artemis' Nuclei report types are too
+        # coarse for a text (nearly every template is "nuclei_vulnerability").
+        curation_key = f"nuclei.{template_id}"
+        entry = catalog["nuclei"].get(template_id)
         if entry:
-            level = "curated"
+            level, entry_used = "template", curation_key
         else:
             matched = nuclei_class(report.additional_data.get("original_template_name"), _tags(report), catalog)
             if matched:
-                entry, level, class_key = matched, "class", matched["key"]
+                entry, level, entry_used = matched, "class", f"nuclei_classes.{matched['key']}"
     else:
-        key = report_type
+        curation_key = f"report_types.{report_type}"
         entry = catalog["report_types"].get(report_type)
         if entry:
-            level = "curated"
+            level, entry_used = "report_type", curation_key
     if entry is None and severity in catalog["by_severity"]:
-        entry, level = catalog["by_severity"][severity], "severity"
+        entry, level, entry_used = catalog["by_severity"][severity], "severity", f"by_severity.{severity}"
     if entry is None:
-        entry = catalog["generic"]
+        entry, level, entry_used = catalog["generic"], "generic", "generic"
 
     identity = json.dumps([report.top_level_target, report.normal_form], ensure_ascii=False, separators=(",", ":"))
     result = {
         "id": hashlib.sha256(identity.encode("utf-8")).hexdigest(),
         "severity": severity,
         "asset": report.target,
-        "catalog_key": key,
-        "catalog": level,
-        "catalog_class": class_key,
+        # text_level: where the texts come from (see LEVELS); text_entry_used: the catalog entry used;
+        # curation_key: where a text specific to this finding would go in the catalog.
+        "text_level": level,
+        "text_entry_used": entry_used,
+        "curation_key": curation_key,
         "technical": {
             "report_type": report_type,
             "additional_data": report.additional_data,
@@ -171,7 +177,7 @@ def enrich(report: Report, catalog: dict[str, Any]) -> dict[str, Any]:
         },
     }
     result.update({field: entry[field] for field in FIELDS})
-    if template_id and level != "curated":
+    if template_id and level != "template":
         class_area = entry["area"] if level == "class" else None
         result["area"] = nuclei_area(report.additional_data.get("original_template_name"), _tags(report), class_area)
     return result
