@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 
 from cybercover_reports.catalog import enrich, load_catalog, nuclei_class, validate_catalog
 from cybercover_reports.reporting import process_results
-from cybercover_reports.summary import build_summary, sort_findings
+from cybercover_reports.summary import sort_findings
 
 ANALYSIS_ID = "1497e976-6e7c-459d-80b2-681e1ea8c000"
 
@@ -102,7 +102,6 @@ def test_class_matching_needs_whole_path_segments():
         lambda c: c["nuclei_classes"][0].pop("title"),
         lambda c: c["nuclei_classes"][0].update(match={}),
         lambda c: c["by_severity"].pop("low"),
-        lambda c: c["summary"].pop("none"),
         lambda c: c.pop("generic"),
     ],
 )
@@ -194,25 +193,14 @@ def _entry(severity, title, recommendation, area="applications", catalog="class"
             "asset": "x", "catalog": catalog}
 
 
-def test_summary_and_sorting():
-    catalog = load_catalog()
+def test_findings_are_sorted_by_severity():
     entries = [
         _entry("low", "Low", "Fix later"),
         _entry("high", "Default login", "Change password", catalog="curated"),
         _entry("medium", "Medium", "Fix soon", area="domain"),
-        _entry("high", "Default login 2", "Change password"),
         _entry("high", "RCE", "Update now"),
     ]
-    summary = build_summary(entries, catalog)
-    assert summary["risk_level"] == "high"
-    assert summary["headline"] == catalog["summary"]["high"].format(count=5)
-    assert summary["by_severity"] == {"high": 3, "medium": 1, "low": 1}
-    assert summary["by_area"] == {"domain": 1, "network": 0, "passwords": 0, "applications": 4, "files": 0}
-    assert [a["recommendation"] for a in summary["top_actions"]] == ["Change password", "Update now", "Fix soon"]
-    assert summary["top_actions"][0]["count"] == 2
-    assert summary["needs_review"] == 4
-    assert [e["severity"] for e in sort_findings(entries)] == ["high", "high", "high", "medium", "low"]
-    assert build_summary([], catalog)["risk_level"] == "none"
+    assert [e["severity"] for e in sort_findings(entries)] == ["high", "high", "medium", "low"]
 
 
 # --- scan type --------------------------------------------------------------------------------------
@@ -349,7 +337,8 @@ def test_posture_merges_latest_completed_full_scan_with_later_scans(artemis_db, 
     assert by_key["nuclei:grafana-default-login"]["last_seen"]["analysis_id"] == "inc-after"
     assert by_key["nuclei:new-cve"]["first_seen"]["scan_type"] == "incremental"
     assert data["results_may_be_partial"] and data["partial_reasons"] == ["pending_tasks"]
-    assert data["summary"]["by_severity"]["high"] == 2
+    assert sorted(f["severity"] for f in data["findings"]) == ["high", "high"]
+    assert not {"summary", "assets", "cached_endpoints"} & set(data)
 
     assert client.get("/cybercover/posture", params={"target": "203.0.113.1"}, headers=headers).status_code == 404
     assert client.get("/cybercover/posture", headers=headers).status_code == 422

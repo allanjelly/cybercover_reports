@@ -1,4 +1,3 @@
-import dataclasses
 import datetime
 import json
 import os
@@ -21,7 +20,7 @@ from artemis.karton_utils import get_num_pending_tasks
 from .catalog import enrich, load_catalog
 from .loader import load_analyses, load_results
 from .reporting import ProcessedResults, process_results
-from .summary import build_summary, sort_findings
+from .summary import sort_findings
 
 # The API docs are served only with the token (below), not publicly.
 app = FastAPI(title="Cybercover fast reporter", docs_url=None, redoc_url=None, openapi_url=None)
@@ -161,11 +160,8 @@ def findings(analysis_id: UUID) -> dict:
             "results_may_be_partial": bool(reasons),
             "partial_reasons": reasons,
             "generated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-            "summary": build_summary(entries, catalog),
             "findings": entries,
             "untranslated": sorted({item["catalog_key"] for item in entries if item["catalog"] != "curated"}),
-            "assets": [dataclasses.asdict(asset) for asset in processed.assets],
-            "cached_endpoints": processed.cached_endpoints,
             "scanned_targets": processed.scanned_targets,
             "alerts": processed.alerts,
             "task_status_counts": processed.status_counts,
@@ -209,8 +205,6 @@ def posture(target: Annotated[list[str], Query()], tag: Optional[str] = None) ->
 
     per_target = []
     merged: dict[str, dict[str, Any]] = {}
-    assets: dict[tuple[Any, ...], dict[str, Any]] = {}
-    endpoints: dict[tuple[str, int], dict[str, Any]] = {}
     alerts: list[str] = []
     module_errors: list[dict[str, Any]] = []
     processing_errors: list[dict[str, Any]] = []
@@ -258,11 +252,6 @@ def posture(target: Annotated[list[str], Query()], tag: Optional[str] = None) ->
             for entry in (enrich(report, catalog) for report in processed.reports):
                 first_seen = merged[entry["id"]]["first_seen"] if entry["id"] in merged else seen
                 merged[entry["id"]] = {**entry, "first_seen": first_seen, "last_seen": seen}
-            for asset in processed.assets:
-                data = dataclasses.asdict(asset)
-                assets.setdefault((data["asset_type"], data["additional_type"], data["name"]), data)
-            for endpoint in processed.cached_endpoints:
-                endpoints[(endpoint["host"], endpoint["port"])] = endpoint
             alerts.extend(alert for alert in processed.alerts if alert not in alerts)
             module_errors.extend(
                 {**error, "analysis_id": analysis["id"], "superseded": superseded} for error in processed.module_errors
@@ -281,11 +270,8 @@ def posture(target: Annotated[list[str], Query()], tag: Optional[str] = None) ->
             "per_target": per_target,
             "results_may_be_partial": bool(reasons),
             "partial_reasons": sorted(reasons),
-            "summary": build_summary(entries, catalog),
             "findings": entries,
             "untranslated": sorted({item["catalog_key"] for item in entries if item["catalog"] != "curated"}),
-            "assets": list(assets.values()),
-            "cached_endpoints": sorted(endpoints.values(), key=lambda e: (e["host"], e["port"])),
             "alerts": alerts,
             "task_status_counts": status_counts,
             "module_errors": module_errors,

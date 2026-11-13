@@ -6,7 +6,6 @@ import pytest
 
 from cybercover_reports.catalog import AREAS, enrich, load_catalog, nuclei_area, validate_catalog
 from cybercover_reports.reporting import process_results
-from cybercover_reports.summary import build_summary
 from test_phase2 import nuclei_finding, nuclei_rows
 
 
@@ -106,9 +105,3 @@ def test_default_login_is_passwords_on_any_protocol(make_row):
 def test_web_finding_without_class_is_applications(make_row):
     entry = _finding(make_row, "odd-web", "http/miscellaneous/odd.yaml", tags=["misc"])
     assert entry["area"] == "applications"
-
-
-def test_summary_lists_all_five_areas_in_order():
-    summary = build_summary([], load_catalog())
-    assert list(summary["by_area"]) == list(AREAS)
-    assert set(summary["by_area"].values()) == {0}

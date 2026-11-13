@@ -406,10 +406,3 @@ generic:
   description: Skan wykrył problem, dla którego nie ma jeszcze zatwierdzonego opisu.
   business_risk: Wpływ na firmę wymaga oceny specjalisty.
   recommendation: Przekaż wynik administratorowi do analizy.
-
-# Headline of the summary, by overall risk level. {count} is the number of findings.
-summary:
-  high: "Wykryto poważne problemy bezpieczeństwa ({count}) - zalecamy pilne działanie."
-  medium: "Wykryto problemy bezpieczeństwa ({count}) - zalecamy ich usunięcie w najbliższym czasie."
-  low: "Wykryto drobne problemy bezpieczeństwa ({count}) - warto je usunąć przy okazji."
-  none: "Nie wykryto problemów bezpieczeństwa."

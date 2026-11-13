@@ -13,7 +13,6 @@ from artemis.reporting.base.report import Report
 CATALOG_DIR = Path(__file__).parent / "catalog"
 FIELDS = ("area", "title", "description", "business_risk", "recommendation")
 SEVERITIES = ("high", "medium", "low")
-RISK_LEVELS = ("high", "medium", "low", "none")
 
 # The areas of the portal's cyber shield, in display order. Every catalog entry has one of them.
 AREAS = ("domain", "network", "passwords", "applications", "files")
@@ -48,7 +47,7 @@ def _check_strings(values: Any, name: str) -> None:
 
 def validate_catalog(catalog: Any) -> dict[str, Any]:
     if not isinstance(catalog, dict) or not all(
-        isinstance(catalog.get(section), dict) for section in ("report_types", "nuclei", "by_severity", "summary")
+        isinstance(catalog.get(section), dict) for section in ("report_types", "nuclei", "by_severity")
     ):
         raise ValueError("Invalid report catalog")
     for section in ("report_types", "nuclei"):
@@ -73,9 +72,6 @@ def validate_catalog(catalog: Any) -> dict[str, Any]:
     for severity in SEVERITIES:
         _check_entry(catalog["by_severity"].get(severity), f"by_severity:{severity}")
     _check_entry(catalog.get("generic"), "generic")
-    for level in RISK_LEVELS:
-        if not isinstance(catalog["summary"].get(level), str) or not catalog["summary"][level].strip():
-            raise ValueError(f"Missing summary headline for risk level {level}")
     return catalog
 
 
@@ -169,9 +165,6 @@ def enrich(report: Report, catalog: dict[str, Any]) -> dict[str, Any]:
         "technical": {
             "report_type": report_type,
             "additional_data": report.additional_data,
-            "original_task_result_id": report.original_task_result_id,
-            "original_karton_name": report.original_karton_name,
-            "normal_form": report.normal_form,
             "is_suspicious": report.is_suspicious,
         },
     }
