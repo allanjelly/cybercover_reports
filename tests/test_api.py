@@ -49,7 +49,9 @@ def test_api_returns_enriched_data_and_partial_status(monkeypatch, make_row):
     assert data["pending_tasks"] == 0
     assert data["task_status_counts"] == {"INTERESTING": 1}
     assert data["findings"][0]["title"] == "Dostęp zdalny widoczny w internecie"
-    assert set(data["findings"][0]["technical"]) == {"report_type", "additional_data", "is_suspicious"}
+    assert set(data["findings"][0]["technical"]) == {
+        "report_type", "additional_data", "is_suspicious", "original_task_result_id"
+    }
     assert not {"summary", "assets", "cached_endpoints"} & set(data)
 
 
@@ -100,3 +102,4 @@ def test_real_loader_with_api_isolates_analysis(monkeypatch, make_row):
     data = response.json()
     assert data["task_status_counts"] == {"INTERESTING": 1}
     assert len(data["findings"]) == 1  # the row of the other analysis is not included
+    assert data["findings"][0]["technical"]["original_task_result_id"] == "correct"

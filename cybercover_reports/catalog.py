@@ -166,6 +166,8 @@ def enrich(report: Report, catalog: dict[str, Any]) -> dict[str, Any]:
             "report_type": report_type,
             "additional_data": report.additional_data,
             "is_suspicious": report.is_suspicious,
+            # Links the finding to its raw result in Artemis (request, response, matched data) for support.
+            "original_task_result_id": report.original_task_result_id,
         },
     }
     result.update({field: entry[field] for field in FIELDS})

@@ -111,7 +111,8 @@ extension that adds the header.
 `findings` are sorted by severity and contain `id`, `severity` (Artemis high/medium/low), `area`,
 `asset`, `title`, `description`, `business_risk`, `recommendation`, `catalog`, `catalog_key`,
 `catalog_class` and `technical` (`report_type`, `additional_data` with the reporter's details such as
-the template id, tags and matched URL, and `is_suspicious`). In the posture response each finding also
+the template id, tags and matched URL, `is_suspicious`, and `original_task_result_id`: the id of the
+raw Artemis task result, for support to look up the request, response and matched data). In the posture response each finding also
 has `first_seen` and `last_seen` (analysis id, time, scan type). The technical data and alerts are
 intended for the portal and operators, not automatically for customers. Counts by severity or area,
 the overall risk and the list of recommendations are left to the portal: they follow directly from
@@ -213,7 +214,7 @@ the current drafts of `catalog/pl.yaml`.
   "pending_tasks": 0,
   "results_may_be_partial": false,
   "partial_reasons": [],
-  "generated_at": "2026-11-13T09:56:03.684640+00:00",
+  "generated_at": "2026-11-13T09:58:16.613144+00:00",
   "findings": [
     {
       "id": "62991ece6b029dab59f2ff142ff6f457c061f691b88cf67baf7c3e06a9962ce9",
@@ -245,7 +246,8 @@ the current drafts of `catalog/pl.yaml`.
           ],
           "artemis_template_name": "network/cves/2026/CVE-2026-123158.yaml"
         },
-        "is_suspicious": false
+        "is_suspicious": false,
+        "original_task_result_id": "inc-nuclei"
       },
       "area": "network",
       "title": "Znana podatność w używanym oprogramowaniu",
@@ -281,7 +283,7 @@ the current drafts of `catalog/pl.yaml`.
     "example.com"
   ],
   "tag": null,
-  "generated_at": "2026-11-13T09:56:03.735119+00:00",
+  "generated_at": "2026-11-13T09:58:16.646510+00:00",
   "per_target": [
     {
       "target": "example.com",
@@ -350,7 +352,8 @@ the current drafts of `catalog/pl.yaml`.
           ],
           "artemis_template_name": "network/cves/2026/CVE-2026-123158.yaml"
         },
-        "is_suspicious": false
+        "is_suspicious": false,
+        "original_task_result_id": "inc-nuclei"
       },
       "area": "network",
       "title": "Znana podatność w używanym oprogramowaniu",
@@ -404,7 +407,8 @@ the current drafts of `catalog/pl.yaml`.
           ],
           "artemis_template_name": "http/default-logins/grafana/grafana-default-login.yaml"
         },
-        "is_suspicious": false
+        "is_suspicious": false,
+        "original_task_result_id": "full-nuclei"
       },
       "area": "passwords",
       "title": "Domyślne hasło dostępu do usługi",
@@ -453,7 +457,8 @@ the current drafts of `catalog/pl.yaml`.
           ],
           "artemis_template_name": "http/exposed-panels/grafana-detect.yaml"
         },
-        "is_suspicious": false
+        "is_suspicious": false,
+        "original_task_result_id": "full-nuclei"
       },
       "area": "applications",
       "title": "Panel administracyjny widoczny w internecie",
